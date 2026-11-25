@@ -148,6 +148,8 @@ services:
         API_INTERNAL_URL: http://api:8000
         NEXT_PUBLIC_STRIPE_PK: ${STRIPE_PUBLISHABLE_KEY}
         NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID: ${STRIPE_CONNECT_CLIENT_ID}
+        NEXT_PUBLIC_BAZZY_LIVE_URL: ${NEXT_PUBLIC_BAZZY_LIVE_URL:-https://live.bazzy.io}
+        NEXT_PUBLIC_BAZZYBOX_URL: ${NEXT_PUBLIC_BAZZYBOX_URL:-https://box.bazzy.io}
     restart: unless-stopped
     env_file: .env
     ports:

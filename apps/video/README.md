@@ -112,7 +112,7 @@ Accounts are matched in this order:
 
 **Apple setup notes.** Apple only returns over https, and it sends the person's name on the very first sign-in only (it's saved then).
 
-**Sign in with Bazzy TV.** Bazzy TV is an OAuth 2.0 provider for other Bazzy apps, starting with BazzyBox (`bassybob1271/Stowage`), so one account works everywhere, however it was created. It uses the authorization code flow with PKCE, for apps registered in `OAUTH_CLIENTS`:
+**Sign in with Bazzy TV.** Bazzy TV is an OAuth 2.0 provider for other Bazzy apps, starting with BazzyBox and Bazzy Live (both in `bassybob1271/Stowage`), so one account works everywhere, however it was created. It uses the authorization code flow with PKCE, for apps registered in `OAUTH_CLIENTS`:
 
 | Step | Where |
 |---|---|
@@ -121,7 +121,9 @@ Accounts are matched in this order:
 | App's server swaps the code (single use, 5 minutes) | `POST /api/v1/oauth/token` (client secret via Basic auth or form) |
 | App reads the user | `GET /api/v1/oauth/userinfo` → `sub`, `email`, `email_verified`, `name`, `picture` |
 
-Redirect URIs must match exactly. Tokens issued to apps carry `typ=oauth_access` and the app's `aud`, so they can't be used as a Bazzy TV session.
+Register both apps (`bazzybox` → `https://box.bazzy.io/api/auth/bazzy/callback`, `bazzylive` → `https://live.bazzy.io/auth/bazzy/callback`; see `.env.example`). Redirect URIs must match exactly.
+
+**Bazzy sites.** The header links to Bazzy Live and BazzyBox. Change the addresses with `NEXT_PUBLIC_BAZZY_LIVE_URL` and `NEXT_PUBLIC_BAZZYBOX_URL` (build time; empty hides a link). Tokens issued to apps carry `typ=oauth_access` and the app's `aud`, so they can't be used as a Bazzy TV session.
 
 Tests: `cd backend && pip install aiosqlite greenlet && pytest` (Google and Apple are faked with local keys).
 

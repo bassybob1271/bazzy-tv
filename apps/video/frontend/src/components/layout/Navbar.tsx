@@ -14,6 +14,12 @@ const NAV_LINKS = [
   { href: "/discover?category=new_releases", label: "New" },
 ];
 
+// The other two Bazzy sites, shown in every header (set at build time; empty hides a link).
+const SISTER_SITES = [
+  { href: process.env.NEXT_PUBLIC_BAZZY_LIVE_URL ?? "https://live.bazzy.io", label: "Live", hint: "Watch live shows", live: true },
+  { href: process.env.NEXT_PUBLIC_BAZZYBOX_URL ?? "https://box.bazzy.io", label: "BazzyBox", hint: "Storage for creators", live: false },
+].filter((s) => s.href);
+
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -80,6 +86,21 @@ export function Navbar() {
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Bazzy Live + BazzyBox */}
+        <nav aria-label="Bazzy sites" className="hidden md:flex items-center gap-1">
+          {SISTER_SITES.map((s) => (
+            <a
+              key={s.label}
+              href={s.href}
+              title={s.hint}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-[#A0A8C0] hover:text-white hover:bg-white/5 transition-colors"
+            >
+              {s.live && <span aria-hidden="true" className="w-2 h-2 rounded-full bg-[#FF3D5A]" />}
+              {s.label}
+            </a>
+          ))}
+        </nav>
 
         {/* Search */}
         <form onSubmit={handleSearch} className="hidden md:flex items-center">
@@ -178,6 +199,16 @@ export function Navbar() {
             >
               {l.label}
             </Link>
+          ))}
+          {SISTER_SITES.map((s) => (
+            <a
+              key={s.label}
+              href={s.href}
+              className="flex items-center gap-2 py-2.5 text-sm text-[#A0A8C0] hover:text-white border-b border-white/5"
+            >
+              {s.live && <span aria-hidden="true" className="w-2 h-2 rounded-full bg-[#FF3D5A]" />}
+              {s.label} <span className="text-[#5A607A]">· {s.hint}</span>
+            </a>
           ))}
           {isAuthenticated && wallet && (
             <div className={`pt-3 text-sm font-mono ${creditColor}`}>
