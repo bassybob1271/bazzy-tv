@@ -4,9 +4,10 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 import os
 
-# Use SQLite for local preview if Postgres isn't configured / reachable
+# Local preview without Postgres: opt in with USE_SQLITE=1 (start-backend.sh sets it).
+# Off by default so Docker/production always use DATABASE_URL.
 _db_url = settings.DATABASE_URL
-if _db_url.startswith("postgresql") and os.environ.get("USE_SQLITE", "1") == "1":
+if _db_url.startswith("postgresql") and os.environ.get("USE_SQLITE", "0") == "1":
     _db_url = "sqlite+aiosqlite:///./bazzy_preview.db"
 
 _kwargs = {}
