@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import engine, Base
 from app.seed import seed_demo_catalog
-from app.api.routes import auth, titles, wallet, filmmaker, admin
+from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider
 import structlog, os
 
 logger = structlog.get_logger()
@@ -55,6 +55,8 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(auth.router,       prefix="/api/v1")
+app.include_router(social.router,     prefix="/api/v1")
+app.include_router(provider.router,   prefix="/api/v1")
 app.include_router(titles.router,     prefix="/api/v1")
 app.include_router(wallet.router,     prefix="/api/v1")
 app.include_router(filmmaker.router,  prefix="/api/v1")

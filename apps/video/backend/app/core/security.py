@@ -44,6 +44,9 @@ async def get_current_user(
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
+        # Tokens issued to other apps ("Sign in with Bazzy TV") carry a typ; they are not website sessions.
+        if payload.get("typ") is not None:
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
 

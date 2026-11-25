@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useStore } from "@/store/useStore";
+import { SocialButtons } from "@/components/auth/SocialButtons";
 
 function RegisterForm() {
   const router = useRouter();
@@ -16,6 +17,8 @@ function RegisterForm() {
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const rawRedirect = searchParams.get("redirect");
+  const redirect = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +29,7 @@ function RegisterForm() {
       // Auto-login
       const res = await api.auth.login(email, password);
       login(res.access_token, res.user_id, res.role);
-      router.push(asFilmmaker ? "/filmmaker" : "/");
+      router.push(redirect ?? (asFilmmaker ? "/filmmaker" : "/"));
     } catch (e: any) {
       setError(e.message ?? "Registration failed");
     } finally {
@@ -70,6 +73,8 @@ function RegisterForm() {
               {error}
             </div>
           )}
+
+          <SocialButtons next={redirect ?? "/"} verb="Sign up" />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

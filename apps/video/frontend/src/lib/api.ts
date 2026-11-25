@@ -35,6 +35,21 @@ export const api = {
         body: form.toString(),
       });
     },
+    /** Which social sign-in buttons are configured on the server. */
+    providers: () => request<{ google: boolean; apple: boolean }>("/auth/providers"),
+    /** Full URL that starts Google/Apple sign-in; `next` is where to land afterwards. */
+    socialStartUrl: (provider: "google" | "apple", next = "/") =>
+      `${BASE}/auth/oauth/${provider}/start?next=${encodeURIComponent(next)}`,
+  },
+
+  // ── Sign in with Bazzy TV (apps like BazzyBox) ──────────────────────────
+  oauth: {
+    client: (clientId: string, redirectUri: string) =>
+      request<{ client_id: string; name: string; trusted: boolean }>(
+        `/oauth/clients/${encodeURIComponent(clientId)}?redirect_uri=${encodeURIComponent(redirectUri)}`
+      ),
+    authorize: (body: { client_id: string; redirect_uri: string; state: string; code_challenge: string; code_challenge_method: string; scope: string }) =>
+      request<{ redirect: string }>("/oauth/authorize", { method: "POST", body: JSON.stringify(body) }),
   },
 
   // ── Titles ────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 """Bazzy Video — Application Configuration"""
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
@@ -46,6 +46,30 @@ class Settings(BaseSettings):
     PLATFORM_OPS_PCT: float = 0.10              # 10% platform ops
     RESERVE_POOL_PCT: float = 0.10              # 10% reserve
     MIN_PAYOUT_USD: float = 25.00
+
+    # Public address of the website (the Next.js app, which proxies /api). Used to build
+    # OAuth redirect URIs and the post-login redirect, e.g. https://video.bazzy.tv
+    PUBLIC_URL: str = "http://localhost:3000"
+
+    # Sign in with Google (Google Cloud console → OAuth client ID, type "Web application").
+    # Authorized redirect URI: {PUBLIC_URL}/api/v1/auth/oauth/google/callback
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
+    # Sign in with Apple (developer.apple.com → Identifiers → Services ID; Keys → Sign in with Apple key).
+    # Return URL: {PUBLIC_URL}/api/v1/auth/oauth/apple/callback (Apple requires https).
+    APPLE_CLIENT_ID: str = ""        # the Services ID, e.g. tv.bazzy.signin
+    APPLE_TEAM_ID: str = ""
+    APPLE_KEY_ID: str = ""
+    APPLE_PRIVATE_KEY: str = ""      # contents of the .p8 file; literal \n sequences are accepted
+
+    # Apps that may "Sign in with Bazzy TV" (OAuth 2.0 authorization code + PKCE), as JSON:
+    # [{"client_id":"bazzybox","client_secret":"…","name":"BazzyBox",
+    #   "redirect_uris":["https://box.bazzy.io/api/auth/bazzy/callback"],"trusted":true}]
+    # trusted = first-party app: skip the consent screen.
+    OAUTH_CLIENTS: List[dict] = []
+    OAUTH_CODE_TTL_SECONDS: int = 300
+    OAUTH_ACCESS_TOKEN_TTL_SECONDS: int = 900
 
     # CORS
     ALLOWED_ORIGINS: List[str] = [
