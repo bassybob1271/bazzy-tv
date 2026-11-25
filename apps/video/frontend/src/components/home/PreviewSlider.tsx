@@ -108,7 +108,8 @@ export function PreviewSlider({ slides }: { slides: Slide[] }) {
 
   return (
     <section
-      className="relative h-[72vh] min-h-[480px] max-h-[760px] overflow-hidden bg-[#0A0C14] select-none"
+      // -mt-16 pulls it under the fixed, transparent navbar so the poster fills the screen
+      className="relative -mt-16 h-[100svh] min-h-[560px] overflow-hidden bg-[#0A0C14] select-none"
       aria-roledescription="carousel"
       aria-label="Featured films"
     >
@@ -137,13 +138,20 @@ export function PreviewSlider({ slides }: { slides: Slide[] }) {
               className="absolute inset-0 w-full h-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4F8EF7]"
               aria-label={`${t.title}. ${hint}`}
             >
-              {/* Blurred poster backdrop */}
-              <div className="absolute inset-0">
-                {t.poster_url && (
-                  <img src={t.poster_url} alt="" className="w-full h-full object-cover scale-110 blur-2xl opacity-60" />
+              {/* Full-screen poster */}
+              <div className="absolute inset-0 overflow-hidden">
+                {t.poster_url ? (
+                  <img
+                    src={t.poster_url}
+                    alt={`${t.title} poster`}
+                    className={`w-full h-full object-cover object-[center_30%] transition-transform ease-out duration-[6000ms] ${active ? "scale-105" : "scale-100"}`}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#1A1D2E] to-[#0A0C14]" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0A0C14] via-[#0A0C14]/70 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0C14] via-transparent to-[#0A0C14]/40" />
+                {/* Shading so the text reads over any poster */}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0C14] via-black/20 to-black/40" />
               </div>
 
               {/* Preview video */}
@@ -153,16 +161,16 @@ export function PreviewSlider({ slides }: { slides: Slide[] }) {
 
               {/* Pane content */}
               <div
-                className={`relative z-20 h-full max-w-[1440px] mx-auto px-16 flex items-center gap-10 transition-opacity duration-300
+                className={`relative z-20 h-full max-w-[1440px] mx-auto px-16 pb-28 flex items-end transition-opacity duration-300
                   ${isPreviewing ? "opacity-0" : "opacity-100"}`}
               >
-                <div className="flex-1 max-w-xl">
+                <div className="max-w-2xl [text-shadow:0_2px_12px_rgba(0,0,0,0.6)]">
                   <span className={`inline-block text-xs font-bold uppercase tracking-[0.25em] mb-4 ${slide.advance ? "text-[#E33B3B]" : "text-[#4F8EF7]"}`}>
                     {slide.advance ? "New on Bazzy · Advance Poster" : "Featured"}
                   </span>
-                  <h2 className="text-4xl md:text-6xl font-black leading-[1.05] mb-4">{t.title}</h2>
+                  <h2 className={`font-black leading-[1.02] mb-4 ${slide.advance ? "text-5xl md:text-8xl" : "text-4xl md:text-7xl"}`}>{t.title}</h2>
                   {t.synopsis && (
-                    <p className="text-[#A0A8C0] text-base md:text-lg leading-relaxed line-clamp-3 mb-6">{t.synopsis}</p>
+                    <p className="text-white/85 text-base md:text-xl leading-relaxed line-clamp-3 mb-6">{t.synopsis}</p>
                   )}
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black font-bold">
@@ -174,30 +182,15 @@ export function PreviewSlider({ slides }: { slides: Slide[] }) {
                     ) : (
                       <span className="text-[#F5C842] font-mono">◈ {t.rent_credits} rent · {t.buy_credits} buy</span>
                     )}
-                    {t.year && <span className="text-[#5A607A]">{t.year}</span>}
-                    {t.runtime_minutes && <span className="text-[#5A607A]">{t.runtime_minutes} min</span>}
+                    {t.year && <span className="text-white/70">{t.year}</span>}
+                    {t.runtime_minutes && <span className="text-white/70">{t.runtime_minutes} min</span>}
                   </div>
                 </div>
 
-                {/* Poster — larger, framed and tilted forward for the advance poster */}
-                {t.poster_url && (
-                  <div className={`hidden md:block flex-shrink-0 ${slide.advance ? "w-[300px] lg:w-[340px]" : "w-[240px] lg:w-[260px]"}`}>
-                    <div className={`relative aspect-[2/3] rounded-lg overflow-hidden shadow-2xl
-                      ${slide.advance ? "ring-2 ring-[#E33B3B]/70 shadow-[0_0_80px_rgba(227,59,59,0.35)]" : "ring-1 ring-white/10"}`}>
-                      <img src={t.poster_url} alt={`${t.title} poster`} className="w-full h-full object-cover" />
-                      {slide.advance && (
-                        <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#E33B3B]">New Release</p>
-                          <p className="text-lg font-black leading-tight">{t.title}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Click hint */}
-              <span className="absolute bottom-14 left-16 z-30 px-4 py-1.5 rounded-full bg-black/60 backdrop-blur text-xs font-semibold text-white">
+              <span className="absolute bottom-16 left-16 z-30 px-4 py-1.5 rounded-full bg-black/60 backdrop-blur text-xs font-semibold text-white">
                 {hint}
               </span>
             </button>
