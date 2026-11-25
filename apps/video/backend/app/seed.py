@@ -1,7 +1,8 @@
 """Bazzy Video — demo catalog seed.
 
 Runs at API startup when SEED_DEMO=true (or by default in SQLite preview mode)
-and the titles table is empty. Safe to leave on: never touches a non-empty DB.
+and any demo title (matched by slug) is missing. Safe to leave on: it only
+adds missing demo titles and never changes or removes existing ones.
 
 Demo logins (password for all: bazzydemo):
   demo@bazzy.tv       viewer, 5,000 credits
@@ -13,7 +14,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import select, func
+from sqlalchemy import select, text
 
 from app.core.security import hash_password
 from app.db.database import AsyncSessionLocal, engine
@@ -53,6 +54,10 @@ CATALOG = [
      "An anthology of five strangers, five stops and one long ride down St. Charles Avenue."),
     ("Paper Krewe", "new_releases", 2026, 81, True, 0.30, 0.68, 2201,
      "A crew of art students builds a guerrilla Mardi Gras parade out of cardboard — and accidentally starts a movement."),
+    ("Second Liners Anonymous", "comedy", 2026, 93, False, 0.50, 0.80, 6480,
+     "A support group for people who can't stop following parades meets every Sunday — right on the parade route."),
+    ("Beignets for Breakfast", "comedy", 2025, 86, True, 0.25, 0.76, 4875,
+     "Two feuding cousins inherit a French Quarter café and have one Jazz Fest weekend to prove who should run it."),
 ]
 
 
@@ -68,8 +73,14 @@ async def seed_demo_catalog() -> None:
         return
 
     async with AsyncSessionLocal() as db:
-        count = (await db.execute(select(func.count(Title.id)))).scalar()
-        if count:
+        if not is_sqlite:
+            # Several API workers start at once: let one seed at a time.
+            # Held until this session's transaction commits or rolls back.
+            await db.execute(text("SELECT pg_advisory_xact_lock(4242002)"))
+        # Add any demo titles that are missing (by slug), so titles added to
+        # CATALOG later also reach databases seeded by an earlier version.
+        existing_slugs = set((await db.execute(select(Title.slug))).scalars())
+        if all(_slug(row[0]) in existing_slugs for row in CATALOG):
             return  # already seeded
 
         now = datetime.now(timezone.utc)
@@ -100,6 +111,8 @@ async def seed_demo_catalog() -> None:
 
         for i, (name, cat, year, runtime, free, editorial, fan, views, synopsis) in enumerate(CATALOG):
             slug = _slug(name)
+            if slug in existing_slugs:
+                continue
             db.add(Title(
                 id=str(uuid.uuid4()), filmmaker_id=fm.id,
                 title=name, slug=slug, synopsis=synopsis,
@@ -118,4 +131,5 @@ async def seed_demo_catalog() -> None:
                 revenue_velocity=float(views // 10),
             ))
         await db.commit()
-        logger.info("bazzy_video.demo_seeded", titles=len(CATALOG))
+        logger.info("bazzy_video.demo_seeded",
+                    titles=sum(_slug(r[0]) not in existing_slugs for r in CATALOG))

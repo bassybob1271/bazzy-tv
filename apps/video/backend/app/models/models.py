@@ -28,6 +28,7 @@ class ContentCategory(str, enum.Enum):
     CRIME        = "crime"
     HORROR       = "horror"
     NEW_RELEASES = "new_releases"
+    COMEDY       = "comedy"
 
 
 class ContentStatus(str, enum.Enum):

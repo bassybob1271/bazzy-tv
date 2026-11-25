@@ -19,6 +19,15 @@ async def lifespan(app: FastAPI):
         if str(engine.url).startswith("postgresql"):
             from sqlalchemy import text
             await conn.execute(text("SELECT pg_advisory_xact_lock(4242001)"))
+            # create_all doesn't alter existing enum types: add categories
+            # introduced after the database was first created.
+            await conn.execute(text("""
+                DO $$ BEGIN
+                  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'contentcategory') THEN
+                    ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'COMEDY';
+                  END IF;
+                END $$;
+            """))
         await conn.run_sync(Base.metadata.create_all)
     await seed_demo_catalog()
     logger.info("bazzy_video.startup", version=settings.APP_VERSION)
