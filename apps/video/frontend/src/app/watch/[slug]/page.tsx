@@ -167,11 +167,9 @@ export default function WatchPage() {
       {showPlayer && title.hls_master_url && (
         <div className="bg-black">
           <VideoPlayer
-            hlsUrl={title.hls_master_url}
-            titleId={title.id}
-            titleName={title.title}
-            isFree={title.is_free}
-            onClose={() => setShowPlayer(false)}
+            // VideoPlayer reads hls_manifest_url; pass the normalized URL through it
+            title={{ ...title, hls_manifest_url: title.hls_master_url }}
+            onComplete={() => setShowPlayer(false)}
           />
         </div>
       )}

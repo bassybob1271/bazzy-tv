@@ -7,11 +7,11 @@ import { useStore } from "@/store/useStore";
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/discover", label: "Discover" },
-  { href: "/browse/documentary", label: "Documentary" },
-  { href: "/browse/romance", label: "Romance" },
-  { href: "/browse/crime", label: "Crime" },
-  { href: "/browse/horror", label: "Horror" },
-  { href: "/browse/new_releases", label: "New" },
+  { href: "/discover?category=documentary", label: "Documentary" },
+  { href: "/discover?category=romance", label: "Romance" },
+  { href: "/discover?category=crime", label: "Crime" },
+  { href: "/discover?category=horror", label: "Horror" },
+  { href: "/discover?category=new_releases", label: "New" },
 ];
 
 export function Navbar() {
@@ -104,7 +104,7 @@ export function Navbar() {
             {/* Credit balance */}
             <Link href="/wallet" className={`hidden md:flex items-center gap-1.5 text-sm font-mono ${creditColor}`}>
               <span>◈</span>
-              <span>{creditBalance > 0 ? creditBalance.toLocaleString() : "…"}</span>
+              <span>{wallet ? creditBalance.toLocaleString() : "…"}</span>
             </Link>
 
             {/* Filmmaker / Admin links */}
