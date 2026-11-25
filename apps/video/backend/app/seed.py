@@ -1,7 +1,7 @@
 """Bazzy Video — demo catalog seed.
 
-Runs at API startup when SEED_DEMO=true and the titles table is empty.
-Safe to leave on: it never touches a database that already has titles.
+Runs at API startup when SEED_DEMO=true (or by default in SQLite preview mode)
+and the titles table is empty. Safe to leave on: never touches a non-empty DB.
 
 Demo logins (password for all: bazzydemo):
   demo@bazzy.tv       viewer, 5,000 credits
@@ -13,10 +13,10 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func
 
 from app.core.security import hash_password
-from app.db.database import AsyncSessionLocal
+from app.db.database import AsyncSessionLocal, engine
 from app.models.models import (
     Title, User, UserRole, FilmmakerProfile, ContentCategory, ContentStatus,
 )
@@ -25,11 +25,9 @@ logger = structlog.get_logger()
 
 DEMO_PASSWORD = "bazzydemo"
 
-# Public HLS test streams (Apple / Mux sample content) so "Play" works out of the box.
 STREAM_A = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
 STREAM_B = "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8"
 
-# (title, category, year, runtime, free, editorial, fan score 0-1, views, synopsis)
 CATALOG = [
     ("Second Line Sunday", "documentary", 2026, 84, True, 0.95, 0.92, 18420,
      "A year inside New Orleans' social aid & pleasure clubs, following the brass bands, the dancers and the families who keep the parade alive."),
@@ -63,31 +61,37 @@ def _slug(s: str) -> str:
 
 
 async def seed_demo_catalog() -> None:
-    if os.getenv("SEED_DEMO", "false").lower() not in ("1", "true", "yes"):
+    # Seed by default in SQLite (preview) mode, or when SEED_DEMO=true
+    is_sqlite = str(engine.url).startswith("sqlite")
+    seed_env = os.getenv("SEED_DEMO", "").lower()
+    if not is_sqlite and seed_env not in ("1", "true", "yes"):
         return
+
     async with AsyncSessionLocal() as db:
-        # API runs several workers: only one seeds, the rest wait then see titles exist.
-        await db.execute(text("SELECT pg_advisory_xact_lock(4242002)"))
-        if (await db.execute(select(func.count(Title.id)))).scalar():
-            return  # catalog already has content — never touch it
+        count = (await db.execute(select(func.count(Title.id)))).scalar()
+        if count:
+            return  # already seeded
 
         now = datetime.now(timezone.utc)
 
-        async def user(email, name, role, credits=0):
+        async def get_or_create_user(email, name, role, credits=0):
             existing = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
             if existing:
                 return existing
-            u = User(id=str(uuid.uuid4()), email=email, hashed_password=hash_password(DEMO_PASSWORD),
+            u = User(id=str(uuid.uuid4()), email=email,
+                     hashed_password=hash_password(DEMO_PASSWORD),
                      display_name=name, role=role, credit_balance=credits)
             db.add(u)
             return u
 
-        await user("demo@bazzy.tv", "Demo Viewer", UserRole.VIEWER, credits=5000)
-        await user("admin@bazzy.tv", "Bazzy Admin", UserRole.ADMIN)
-        fm_user = await user("filmmaker@bazzy.tv", "Crescent City Films", UserRole.FILMMAKER)
+        await get_or_create_user("demo@bazzy.tv", "Demo Viewer", UserRole.VIEWER, credits=5000)
+        await get_or_create_user("admin@bazzy.tv", "Bazzy Admin", UserRole.ADMIN)
+        fm_user = await get_or_create_user("filmmaker@bazzy.tv", "Crescent City Films", UserRole.FILMMAKER)
         await db.flush()
 
-        fm = (await db.execute(select(FilmmakerProfile).where(FilmmakerProfile.user_id == fm_user.id))).scalar_one_or_none()
+        fm = (await db.execute(
+            select(FilmmakerProfile).where(FilmmakerProfile.user_id == fm_user.id)
+        )).scalar_one_or_none()
         if not fm:
             fm = FilmmakerProfile(id=str(uuid.uuid4()), user_id=fm_user.id,
                                   bio="Independent New Orleans production company (demo account).")
@@ -97,15 +101,19 @@ async def seed_demo_catalog() -> None:
         for i, (name, cat, year, runtime, free, editorial, fan, views, synopsis) in enumerate(CATALOG):
             slug = _slug(name)
             db.add(Title(
-                id=str(uuid.uuid4()), filmmaker_id=fm.id, title=name, slug=slug, synopsis=synopsis,
-                category=ContentCategory(cat), year=year, runtime_minutes=runtime, rating="PG",
+                id=str(uuid.uuid4()), filmmaker_id=fm.id,
+                title=name, slug=slug, synopsis=synopsis,
+                category=ContentCategory(cat), year=year,
+                runtime_minutes=runtime, rating="PG",
                 tags=[cat, "new orleans"], is_free=free,
-                rent_credits=0 if free else 200, buy_credits=0 if free else 800,
+                rent_credits=0 if free else 200,
+                buy_credits=0 if free else 800,
                 poster_url=f"https://picsum.photos/seed/{slug}/600/900",
                 hls_manifest_url=STREAM_A if i % 2 == 0 else STREAM_B,
                 drm_enabled=False, status=ContentStatus.LIVE,
                 published_at=now - timedelta(days=i * 3),
-                view_count=views, completion_rate=round(0.55 + fan * 0.4, 3),
+                view_count=views,
+                completion_rate=round(0.55 + fan * 0.4, 3),
                 fan_vote_score=fan, editorial_score=editorial,
                 revenue_velocity=float(views // 10),
             ))

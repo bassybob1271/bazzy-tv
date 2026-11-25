@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, Title, HomeRails } from "@/lib/api";
 import { TitleCard } from "@/components/ui/TitleCard";
+import { LandingHero } from "@/components/landing/LandingHero";
 
 function HeroBanner({ title }: { title: Title }) {
   return (
@@ -95,10 +96,13 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[80vh]">
-        <div className="text-center">
-          <div className="text-5xl mb-4 animate-pulse">◈</div>
-          <p className="text-[#5A607A]">Loading…</p>
+      <div className="min-h-screen">
+        <LandingHero />
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <div className="text-5xl mb-4 animate-pulse">◈</div>
+            <p className="text-[#5A607A]">Loading…</p>
+          </div>
         </div>
       </div>
     );
@@ -106,6 +110,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
+      {/* Bazzy landing hero with spinning logo */}
+      <LandingHero />
+
       {/* Hero */}
       {featured && <HeroBanner title={featured} />}
 

@@ -6,16 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
-import stripe
 from app.core.config import settings
 from app.models.models import (
     User, CreditTransaction, FilmmakerEarning, Payout,
-    TransactionType, ContentAccess, AccessType, Title
+    TransactionType, ContentAccess, AccessType, Title, FilmmakerProfile
 )
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+try:
+    import stripe
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+except Exception:
+    stripe = None
 
 
 class CreditService:
@@ -37,8 +40,11 @@ class CreditService:
         t = self.CREDIT_TIERS[tier]
         total_credits = t["credits"] + t["bonus"]
 
+        if not stripe:
+            raise HTTPException(503, "Stripe not configured")
+
         session = stripe.checkout.Session.create(
-            payment_method_types=["card", "apple_pay", "google_pay", "us_bank_account"],
+            payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "usd",
@@ -51,8 +57,8 @@ class CreditService:
                 "quantity": 1,
             }],
             mode="payment",
-            success_url="https://video.bazzy.tv/wallet?success=1",
-            cancel_url="https://video.bazzy.tv/wallet",
+            success_url="http://localhost:3000/wallet?success=1",
+            cancel_url="http://localhost:3000/wallet",
             metadata={"user_id": user_id, "tier": tier, "credits": total_credits},
         )
         return session.url
@@ -61,7 +67,6 @@ class CreditService:
                                        credits: int, stripe_payment_id: str,
                                        usd_amount: float):
         """Called by Stripe webhook on payment_intent.succeeded"""
-        # Add credits to user wallet
         await db.execute(
             update(User)
             .where(User.id == user_id)
@@ -70,7 +75,6 @@ class CreditService:
                 lifetime_credits=User.lifetime_credits + credits,
             )
         )
-        # Log transaction
         txn = CreditTransaction(
             id=str(uuid.uuid4()),
             user_id=user_id,
@@ -87,7 +91,6 @@ class CreditService:
 
     async def debit_stream(self, db: AsyncSession, user_id: str, title_id: str,
                             minutes: int, session_id: str) -> int:
-        """Debit streaming credits. Returns remaining balance."""
         credits_to_debit = minutes * settings.CREDITS_STREAM_PER_MIN
 
         result = await db.execute(select(User).where(User.id == user_id))
@@ -106,27 +109,58 @@ class CreditService:
             transaction_type=TransactionType.STREAM_DEBIT,
             credits_delta=-credits_to_debit,
             description=f"Streamed {minutes} minutes",
-            extra_data={"session_id": session_id},
         )
         db.add(txn)
-
-        # Credit filmmaker (async — via Kafka in production, inline for MVP)
         await self._credit_filmmaker(db, title_id, credits_to_debit)
-
         await db.commit()
         return user.credit_balance
 
     # ── Rent / Buy ────────────────────────────────────────────────────────────
 
+    async def active_access(self, db: AsyncSession, user_id: str,
+                            title_id: str) -> "ContentAccess | None":
+        """Best current grant for this user+title: a purchase beats a rental,
+        a later-expiring rental beats an earlier one. Expired rentals don't count."""
+        result = await db.execute(
+            select(ContentAccess).where(
+                ContentAccess.user_id == user_id,
+                ContentAccess.title_id == title_id,
+            )
+        )
+        now = datetime.utcnow()
+        best = None
+        for grant in result.scalars():
+            if grant.access_type == AccessType.BUY or grant.expires_at is None:
+                return grant
+            expires = grant.expires_at
+            if expires.tzinfo is not None:  # Postgres returns aware, SQLite naive
+                expires = expires.astimezone(timezone.utc).replace(tzinfo=None)
+            if expires > now and (best is None or expires > best[0]):
+                best = (expires, grant)
+        return best[1] if best else None
+
     async def purchase_access(self, db: AsyncSession, user_id: str, title_id: str,
-                               access_type: AccessType):
-        """Debit credits for rent or buy, grant access."""
+                               access_type: AccessType) -> tuple[bool, "ContentAccess"]:
+        """Debit credits for rent or buy, grant access.
+
+        Returns (charged, grant). If the user already has access that covers the
+        request (an owned title, or an unexpired rental when renting), nothing is
+        charged and the existing grant is returned. Buying a title you only rent
+        is still charged: it upgrades the rental to permanent.
+        """
         result_user  = await db.execute(select(User).where(User.id == user_id))
         result_title = await db.execute(select(Title).where(Title.id == title_id))
         user  = result_user.scalar_one_or_none()
         title = result_title.scalar_one_or_none()
-        if not user or not title:
-            raise HTTPException(404, "User or title not found")
+        if not user:
+            raise HTTPException(404, "User not found")
+        if not title:
+            raise HTTPException(404, "Title not found")
+
+        existing = await self.active_access(db, user_id, title_id)
+        if existing and (existing.access_type == AccessType.BUY
+                         or access_type == AccessType.RENT):
+            return False, existing
 
         credits_cost = (
             title.rent_credits if access_type == AccessType.RENT else title.buy_credits
@@ -136,7 +170,6 @@ class CreditService:
 
         user.credit_balance -= credits_cost
 
-        # Grant access
         expires = datetime.utcnow() + timedelta(days=30) if access_type == AccessType.RENT else None
         access = ContentAccess(
             id=str(uuid.uuid4()),
@@ -159,6 +192,7 @@ class CreditService:
         db.add(txn)
         await self._credit_filmmaker(db, title_id, credits_cost)
         await db.commit()
+        return True, access
 
     # ── Filmmaker credit (payout waterfall) ───────────────────────────────────
 
@@ -166,13 +200,13 @@ class CreditService:
         """Apply payout waterfall and credit filmmaker's ledger."""
         result = await db.execute(select(Title).where(Title.id == title_id))
         title = result.scalar_one_or_none()
-        if not title:
+        # No filmmaker attached (seed data) — skip silently
+        if not title or not title.filmmaker_id:
             return
 
-        # Waterfall: 3% processing + 7% delivery = 10% gross fees
-        net_credits  = int(gross_credits * (1 - settings.PLATFORM_PROCESSING_FEE_PCT
-                                              - settings.PLATFORM_DELIVERY_FEE_PCT))
-        fm_credits   = int(net_credits * settings.FILMMAKER_SHARE_PCT)
+        net_credits = int(gross_credits * (1 - settings.PLATFORM_PROCESSING_FEE_PCT
+                                             - settings.PLATFORM_DELIVERY_FEE_PCT))
+        fm_credits  = int(net_credits * settings.FILMMAKER_SHARE_PCT)
 
         earning = FilmmakerEarning(
             id=str(uuid.uuid4()),
@@ -183,17 +217,15 @@ class CreditService:
         )
         db.add(earning)
 
-        # Update filmmaker lifetime total
         await db.execute(
-            update(type(title.filmmaker))
-            .where(type(title.filmmaker).id == title.filmmaker_id)
-            .values(total_earned_credits=type(title.filmmaker).total_earned_credits + fm_credits)
+            update(FilmmakerProfile)
+            .where(FilmmakerProfile.id == title.filmmaker_id)
+            .values(total_earned_credits=FilmmakerProfile.total_earned_credits + fm_credits)
         )
 
     # ── Payout (Stripe Connect) ────────────────────────────────────────────────
 
     async def trigger_payout(self, db: AsyncSession, filmmaker_id: str) -> dict:
-        """Aggregate unsettled earnings and trigger Stripe Connect transfer."""
         from sqlalchemy import func as sqlfunc
         result = await db.execute(
             select(sqlfunc.sum(FilmmakerEarning.usd_equivalent))
@@ -207,7 +239,6 @@ class CreditService:
         if total_usd < settings.MIN_PAYOUT_USD:
             raise HTTPException(400, f"Minimum payout is ${settings.MIN_PAYOUT_USD}. Balance: ${total_usd:.2f}")
 
-        from app.models.models import FilmmakerProfile
         result_fm = await db.execute(
             select(FilmmakerProfile).where(FilmmakerProfile.id == filmmaker_id)
         )
@@ -215,7 +246,9 @@ class CreditService:
         if not fm or not fm.stripe_connect_id:
             raise HTTPException(400, "Stripe Connect account not set up")
 
-        # Stripe transfer
+        if not stripe:
+            raise HTTPException(503, "Stripe not configured")
+
         transfer = stripe.Transfer.create(
             amount=int(total_usd * 100),
             currency="usd",
@@ -233,7 +266,6 @@ class CreditService:
         )
         db.add(payout)
 
-        # Mark earnings as settled
         await db.execute(
             update(FilmmakerEarning)
             .where(FilmmakerEarning.filmmaker_id == filmmaker_id,

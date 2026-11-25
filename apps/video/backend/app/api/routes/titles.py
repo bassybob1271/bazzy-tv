@@ -179,8 +179,12 @@ async def rent_title(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await credits_svc.purchase_access(db, current_user.id, title_id, AccessType.RENT)
-    return {"status": "rented", "expires_days": 30}
+    charged, grant = await credits_svc.purchase_access(db, current_user.id, title_id, AccessType.RENT)
+    if not charged:
+        if grant.access_type == AccessType.BUY:
+            return {"status": "already_owned", "permanent": True, "charged": False}
+        return {"status": "already_rented", "expires_at": grant.expires_at, "charged": False}
+    return {"status": "rented", "expires_days": 30, "expires_at": grant.expires_at, "charged": True}
 
 
 @router.post("/{title_id}/buy")
@@ -189,8 +193,10 @@ async def buy_title(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await credits_svc.purchase_access(db, current_user.id, title_id, AccessType.BUY)
-    return {"status": "purchased", "permanent": True}
+    charged, _ = await credits_svc.purchase_access(db, current_user.id, title_id, AccessType.BUY)
+    if not charged:
+        return {"status": "already_owned", "permanent": True, "charged": False}
+    return {"status": "purchased", "permanent": True, "charged": True}
 
 
 @router.post("/{title_id}/stream-ping")

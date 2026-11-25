@@ -1,7 +1,7 @@
 /**
  * Bazzy Video — API client
  */
-const BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bv_token") : null;
@@ -23,7 +23,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const api = {
   auth: {
-    register: (data: { email: string; password: string; display_name: string; is_filmmaker?: boolean; bio?: string }) =>
+    register: (data: { email: string; password: string; display_name: string; is_filmmaker?: boolean }) =>
       request<{ access_token: string; user_id: string; role: string }>("/auth/register", {
         method: "POST", body: JSON.stringify(data),
       }),
@@ -43,6 +43,8 @@ export const api = {
     discover: (params: DiscoverParams) =>
       request<Title[]>(`/titles/discover?${new URLSearchParams(params as any)}`),
     get: (slug: string) => request<Title>(`/titles/${slug}`),
+    /** Alias so watch/[slug]/page.tsx can call api.titles.detail(slug) */
+    detail: (slug: string) => request<Title>(`/titles/${slug}`),
     becauseYouWatched: (id: string) => request<Title[]>(`/titles/${id}/because-you-watched`),
     rent: (id: string) => request<{ status: string }>(`/titles/${id}/rent`, { method: "POST" }),
     buy: (id: string) => request<{ status: string }>(`/titles/${id}/buy`, { method: "POST" }),
@@ -51,6 +53,9 @@ export const api = {
     vote: (id: string, stars: number) =>
       request<{ voted: number }>(`/titles/${id}/vote?stars=${stars}`, { method: "POST" }),
     addWatchlist: (id: string) =>
+      request<{ added: boolean }>(`/titles/${id}/watchlist`, { method: "POST" }),
+    /** Alias used in watch/[slug]/page.tsx */
+    watchlist: (id: string) =>
       request<{ added: boolean }>(`/titles/${id}/watchlist`, { method: "POST" }),
   },
 
@@ -96,9 +101,14 @@ export const api = {
 export interface Title {
   id: string; title: string; slug: string; synopsis?: string;
   category: string; year?: number; runtime_minutes?: number;
-  poster_url?: string; trailer_url?: string; hls_manifest_url?: string;
+  poster_url?: string; backdrop_url?: string; trailer_url?: string;
+  /** Backend field name */
+  hls_manifest_url?: string;
+  /** Alias used by VideoPlayer — same value */
+  hls_master_url?: string;
   rent_credits: number; buy_credits: number; is_free: boolean;
   view_count: number; completion_rate: number; fan_vote_score: number; status: string;
+  has_access?: boolean;
 }
 export interface HomeRails { hero: Title[]; trending: Title[]; new_arrivals: Title[];
   documentary: Title[]; romance: Title[]; crime: Title[]; horror: Title[];

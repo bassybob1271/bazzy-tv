@@ -4,26 +4,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import settings
-from sqlalchemy import text
 from app.db.database import engine, Base
 from app.seed import seed_demo_catalog
 from app.api.routes import auth, titles, wallet, filmmaker, admin
-import structlog
+import structlog, os
 
 logger = structlog.get_logger()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create all tables
     async with engine.begin() as conn:
-        # Several uvicorn workers start at once: serialize table creation.
-        await conn.execute(text("SELECT pg_advisory_xact_lock(4242001)"))
+        # pg_advisory_xact_lock is PostgreSQL-only; skip on SQLite
+        if str(engine.url).startswith("postgresql"):
+            from sqlalchemy import text
+            await conn.execute(text("SELECT pg_advisory_xact_lock(4242001)"))
         await conn.run_sync(Base.metadata.create_all)
     await seed_demo_catalog()
     logger.info("bazzy_video.startup", version=settings.APP_VERSION)
     yield
-    # Shutdown
     await engine.dispose()
     logger.info("bazzy_video.shutdown")
 
@@ -37,7 +36,6 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -47,7 +45,6 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Routers
 app.include_router(auth.router,       prefix="/api/v1")
 app.include_router(titles.router,     prefix="/api/v1")
 app.include_router(wallet.router,     prefix="/api/v1")
