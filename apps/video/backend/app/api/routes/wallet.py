@@ -7,12 +7,16 @@ from app.db.database import get_db
 from app.models.models import User, CreditTransaction
 from app.core.security import get_current_user
 from app.services.credit_service import CreditService
-import stripe
+try:
+    import stripe
+except ImportError:
+    stripe = None
 from app.core.config import settings
 
 router = APIRouter(prefix="/wallet", tags=["wallet"])
 credits_svc = CreditService()
-stripe.api_key = settings.STRIPE_SECRET_KEY
+if stripe and getattr(settings, "STRIPE_SECRET_KEY", None):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class CheckoutRequest(BaseModel):

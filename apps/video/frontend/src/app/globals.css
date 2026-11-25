@@ -56,3 +56,17 @@ html, body {
   50%      { opacity: 0.5; }
 }
 .credit-low { animation: creditPulse 1.4s ease infinite; color: #E05252; }
+
+/* ── Bazzy landing hero (ported from previous Bazzy TV build) ── */
+@keyframes bz-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+@keyframes bz-slide-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bz-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bz-logo-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.bz-float { animation: bz-float 6s ease-in-out infinite; }
+.bz-slide-up { animation: bz-slide-up 0.8s ease-out both; }
+.bz-fade-in { animation: bz-fade-in 0.8s ease-out both; }
+.bz-logo-spin { animation: bz-logo-spin 6s linear infinite; }
+.bz-glass { backdrop-filter: blur(24px); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+@media (prefers-reduced-motion: reduce) {
+  .bz-float, .bz-slide-up, .bz-fade-in, .bz-logo-spin { animation: none; }
+}

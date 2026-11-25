@@ -38,6 +38,8 @@ export default function WatchPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const { isAuthenticated, wallet, fetchWallet } = useStore();
+  // Normalize balance — backend returns credit_balance, store may expose either
+  const creditBalance = (wallet as any)?.credit_balance ?? (wallet as any)?.balance ?? 0;
 
   const [title, setTitle] = useState<Title | null>(null);
   const [related, setRelated] = useState<Title[]>([]);
@@ -52,9 +54,11 @@ export default function WatchPage() {
   useEffect(() => {
     async function load() {
       try {
-        const t = await api.titles.get(slug);
+        const raw = await api.titles.detail(slug);
+        // Normalize hls_manifest_url → hls_master_url so VideoPlayer finds it
+        const t = { ...raw, hls_master_url: raw.hls_master_url ?? raw.hls_manifest_url };
         setTitle(t);
-        setHasAccess(t.is_free || (t as any).has_access);
+        setHasAccess(t.is_free || !!t.has_access);
         // Load related
         const r = await api.titles.discover({ category: t.category, limit: 8 });
         setRelated(r.filter((x) => x.id !== t.id));
@@ -106,7 +110,7 @@ export default function WatchPage() {
   async function handleWatchlist() {
     if (!isAuthenticated || !title) return;
     setInWatchlist(!inWatchlist);
-    await api.titles.addWatchlist(title.id);
+    await api.titles.watchlist(title.id);
   }
 
   if (loading) {
@@ -128,17 +132,16 @@ export default function WatchPage() {
   }
 
   const accent = CAT_COLORS[title.category] ?? "#4F8EF7";
-  const balance = wallet?.credit_balance ?? 0;
-  const canAffordRent = balance >= title.rent_credits;
-  const canAffordBuy = balance >= title.buy_credits;
+  const canAffordRent = creditBalance >= title.rent_credits;
+  const canAffordBuy = creditBalance >= title.buy_credits;
 
   return (
     <div className="max-w-[1440px] mx-auto fade-up">
       {/* Hero backdrop */}
       {!showPlayer && (
         <div className="relative h-[55vh] min-h-[400px] overflow-hidden">
-          {title.poster_url ? (
-            <img src={title.poster_url} alt="" className="w-full h-full object-cover" />
+          {title.backdrop_url ? (
+            <img src={title.backdrop_url} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accent}22, #0A0C14)` }} />
           )}
@@ -161,17 +164,20 @@ export default function WatchPage() {
       )}
 
       {/* Player */}
-      {showPlayer && title.hls_manifest_url && (
+      {showPlayer && title.hls_master_url && (
         <div className="bg-black">
           <VideoPlayer
-            title={title}
-            onComplete={() => setShowPlayer(false)}
+            hlsUrl={title.hls_master_url}
+            titleId={title.id}
+            titleName={title.title}
+            isFree={title.is_free}
+            onClose={() => setShowPlayer(false)}
           />
         </div>
       )}
 
       {/* Detail section */}
-      <div className={`px-6 md:px-16 relative z-10 pb-10 ${showPlayer ? "mt-8" : "-mt-20"}`}>
+      <div className="px-6 md:px-16 -mt-20 relative z-10 pb-10">
         <div className="flex gap-8 items-start">
           {/* Poster */}
           {title.poster_url && (
