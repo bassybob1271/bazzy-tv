@@ -101,11 +101,38 @@ npm run dev
 
 ---
 
+## Sign-in: email, Apple, Google, and "Sign in with Bazzy TV"
+
+**Apple and Google.** The login and sign-up pages show "Continue with Apple" and "Continue with Google" once their keys are in `.env` (see `.env.example`). Both use OpenID Connect with the authorization code flow; Google also uses PKCE. The `id_token` is checked against the provider's published keys, audience, issuer and nonce, and a short-lived HttpOnly cookie ties the return trip to the browser that started it.
+
+Accounts are matched in this order:
+1. A Google or Apple account already linked to a user signs straight in.
+2. Otherwise, an email the provider has verified joins the user with that email. If that user's email was never verified, their old password stops working, because the provider just proved someone else owns the address.
+3. Otherwise, a new viewer account is created.
+
+**Apple setup notes.** Apple only returns over https, and it sends the person's name on the very first sign-in only (it's saved then).
+
+**Sign in with Bazzy TV.** Bazzy TV is an OAuth 2.0 provider for other Bazzy apps, starting with BazzyBox (`bassybob1271/Stowage`), so one account works everywhere, however it was created. It uses the authorization code flow with PKCE, for apps registered in `OAUTH_CLIENTS`:
+
+| Step | Where |
+|---|---|
+| App sends the browser to | `{PUBLIC_URL}/oauth/authorize?response_type=code&client_id=…&redirect_uri=…&state=…&code_challenge=…&code_challenge_method=S256` |
+| User signs in if needed; consent is skipped for `"trusted": true` apps | website page `/oauth/authorize` |
+| App's server swaps the code (single use, 5 minutes) | `POST /api/v1/oauth/token` (client secret via Basic auth or form) |
+| App reads the user | `GET /api/v1/oauth/userinfo` → `sub`, `email`, `email_verified`, `name`, `picture` |
+
+Redirect URIs must match exactly. Tokens issued to apps carry `typ=oauth_access` and the app's `aud`, so they can't be used as a Bazzy TV session.
+
+Tests: `cd backend && pip install aiosqlite greenlet && pytest` (Google and Apple are faked with local keys).
+
+---
+
 ## API Routes
 
 | Group | Base | Description |
 |-------|------|-------------|
-| Auth | `/api/v1/auth` | Register, login, JWT |
+| Auth | `/api/v1/auth` | Register, login, JWT, Apple/Google sign-in |
+| OAuth | `/api/v1/oauth` | Sign in with Bazzy TV (authorize, token, userinfo) |
 | Titles | `/api/v1/titles` | Browse, stream, vote |
 | Wallet | `/api/v1/wallet` | Credits, Stripe checkout |
 | Filmmaker | `/api/v1/filmmaker` | Dashboard, payouts |

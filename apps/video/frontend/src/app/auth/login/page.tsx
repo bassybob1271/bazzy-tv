@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useStore } from "@/store/useStore";
+import { SocialButtons } from "@/components/auth/SocialButtons";
 
 function LoginForm() {
   const router = useRouter();
@@ -12,9 +13,11 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(searchParams.get("error") ?? "");
 
-  const redirect = searchParams.get("redirect") ?? "/";
+  // Only this site's own pages: "/wallet" yes, "//evil.com" or "https://…" no.
+  const rawRedirect = searchParams.get("redirect") ?? "/";
+  const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +51,8 @@ function LoginForm() {
               {error}
             </div>
           )}
+
+          <SocialButtons next={redirect} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -84,7 +89,7 @@ function LoginForm() {
 
           <p className="text-sm text-center text-[#5A607A] mt-6">
             Don't have an account?{" "}
-            <Link href="/auth/register" className="text-[#4F8EF7] hover:underline">Join Bazzy Video</Link>
+            <Link href={redirect !== "/" ? `/auth/register?redirect=${encodeURIComponent(redirect)}` : "/auth/register"} className="text-[#4F8EF7] hover:underline">Join Bazzy Video</Link>
           </p>
         </div>
 

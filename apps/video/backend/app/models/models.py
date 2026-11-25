@@ -60,6 +60,33 @@ class AccessType(str, enum.Enum):
 
 # ── Users ─────────────────────────────────────────────────────────────────────
 
+class OAuthIdentity(Base):
+    """A Google or Apple account linked to a Bazzy user (one user can have several)."""
+    __tablename__ = "oauth_identities"
+    __table_args__ = (Index("ix_oauth_identity_provider_subject", "provider", "subject", unique=True),)
+
+    id         = Column(String(36), primary_key=True, default=gen_uuid)
+    user_id    = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider   = Column(String(20), nullable=False)    # google | apple
+    subject    = Column(String(255), nullable=False)   # the provider's stable user id ("sub")
+    email      = Column(String(255))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class OAuthGrant(Base):
+    """One-time authorization code issued to an app using "Sign in with Bazzy TV"."""
+    __tablename__ = "oauth_grants"
+
+    code_hash      = Column(String(64), primary_key=True)   # sha256 of the code; the code itself is never stored
+    client_id      = Column(String(100), nullable=False)
+    user_id        = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    redirect_uri   = Column(String(500), nullable=False)
+    code_challenge = Column(String(128), nullable=False)
+    scope          = Column(String(200), nullable=False, default="openid profile email")
+    expires_at     = Column(BigInteger, nullable=False)      # unix seconds
+    used           = Column(Boolean, default=False, nullable=False)
+
+
 class User(Base):
     __tablename__ = "users"
 
