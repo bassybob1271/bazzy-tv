@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_CONNECT_CLIENT_ID: str = ""
 
+    # Video storage: "b2" (Backblaze B2, S3-compatible) or "oci"
+    STORAGE_BACKEND: str = "b2"
+    B2_ENDPOINT: str = ""          # e.g. https://s3.us-east-005.backblazeb2.com
+    B2_REGION: str = ""            # e.g. us-east-005 (read from the endpoint when empty)
+    B2_BUCKET: str = "BazzyVideo"
+    B2_KEY_ID: str = ""
+    B2_APP_KEY: str = ""
+    B2_PUBLIC_URL: str = ""        # CDN in front of the bucket, e.g. https://bazzyvideo.b-cdn.net (Bunny)
+
     # OCI Storage
     OCI_NAMESPACE: str = ""
     OCI_BUCKET_HOT: str = "bazzy-video-hot"

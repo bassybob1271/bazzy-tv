@@ -6,8 +6,8 @@ Codec: H.264 (now) + AV1 (Y3 target, 60% catalog)
 import subprocess
 import os
 import uuid
-import oci
-import cloudflare
+import mimetypes
+import re
 from pathlib import Path
 from app.core.config import settings
 from app.models.models import Title, ContentStatus
@@ -64,7 +64,7 @@ class TranscodeService:
         master_playlist = self._build_master_playlist(hls_outputs, job_dir)
 
         # Step 4: Upload to OCI
-        oci_base_url = await self._upload_to_oci(title_id, job_dir)
+        oci_base_url = await self._upload_media(title_id, job_dir)
 
         # Step 5: Push to Cloudflare Stream CDN
         cf_uid = await self._push_to_cloudflare_stream(master_playlist)
@@ -131,10 +131,53 @@ class TranscodeService:
             f.write("\n".join(lines))
         return master_path
 
+    async def _upload_media(self, title_id: str, job_dir: Path) -> str:
+        if settings.STORAGE_BACKEND.lower() == "oci":
+            return await self._upload_to_oci(title_id, job_dir)
+        return await self._upload_to_b2(title_id, job_dir)
+
+    async def _upload_to_b2(self, title_id: str, job_dir: Path) -> str:
+        """Upload HLS output to the Backblaze B2 bucket (S3 API). Returns the public base URL."""
+        import asyncio
+        import boto3
+        from boto3.s3.transfer import TransferConfig
+
+        if not (settings.B2_ENDPOINT and settings.B2_KEY_ID and settings.B2_APP_KEY):
+            raise RuntimeError("Set B2_ENDPOINT, B2_KEY_ID and B2_APP_KEY to store video on Backblaze B2")
+        m = re.search(r"s3\.([a-z0-9-]+)\.backblazeb2\.com", settings.B2_ENDPOINT)
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=settings.B2_ENDPOINT,
+            region_name=settings.B2_REGION or (m.group(1) if m else "us-east-1"),
+            aws_access_key_id=settings.B2_KEY_ID,
+            aws_secret_access_key=settings.B2_APP_KEY,
+        )
+        base_path = f"titles/{title_id}"
+        transfer = TransferConfig(multipart_threshold=64 * 1024 * 1024, multipart_chunksize=64 * 1024 * 1024)
+
+        def put_all():
+            for file in job_dir.rglob("*"):
+                if not file.is_file():
+                    continue
+                rel = file.relative_to(job_dir).as_posix()
+                playlist = rel.endswith(".m3u8")
+                ctype = "application/vnd.apple.mpegurl" if playlist else (
+                    "video/mp2t" if rel.endswith(".ts") else mimetypes.guess_type(rel)[0] or "application/octet-stream")
+                s3.upload_file(str(file), settings.B2_BUCKET, f"{base_path}/{rel}", Config=transfer, ExtraArgs={
+                    "ContentType": ctype,
+                    "CacheControl": "public, max-age=60" if playlist else "public, max-age=31536000, immutable",
+                })
+
+        await asyncio.to_thread(put_all)
+        public = settings.B2_PUBLIC_URL.rstrip("/") or f"{settings.B2_ENDPOINT.rstrip('/')}/{settings.B2_BUCKET}"
+        return f"{public}/{base_path}"
+
     async def _upload_to_oci(self, title_id: str, job_dir: Path) -> str:
         """Upload HLS segments to OCI Object Storage hot bucket."""
         # In production: use OCI SDK upload_manager for parallel multipart
         # Simplified here — real implementation uses asyncio + OCI SDK
+        import oci
+
         config = oci.config.from_file()
         object_storage = oci.object_storage.ObjectStorageClient(config)
         namespace = settings.OCI_NAMESPACE
