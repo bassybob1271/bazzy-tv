@@ -3,58 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, Title, HomeRails } from "@/lib/api";
 import { TitleCard } from "@/components/ui/TitleCard";
-import { LandingHero } from "@/components/landing/LandingHero";
-
-function HeroBanner({ title }: { title: Title }) {
-  return (
-    <div className="relative h-[70vh] min-h-[500px] overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0">
-        {title.poster_url ? (
-          <img src={title.poster_url} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#1A1D2E] to-[#0A0C14]" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0C14] via-transparent to-transparent" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 h-full flex items-end pb-16 px-6 md:px-16 max-w-[1440px] mx-auto">
-        <div className="max-w-xl fade-up">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#4F8EF7] mb-3 block">
-            Featured
-          </span>
-          <h1 className="text-4xl md:text-6xl font-black leading-tight mb-4">{title.title}</h1>
-          {title.synopsis && (
-            <p className="text-[#A0A8C0] text-base leading-relaxed line-clamp-3 mb-6">
-              {title.synopsis}
-            </p>
-          )}
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/watch/${title.slug}`}
-              className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-[#E0E0E0] transition-colors text-sm"
-            >
-              ▶ Watch Now
-            </Link>
-            <Link
-              href={`/watch/${title.slug}`}
-              className="px-8 py-3 bg-white/15 text-white font-semibold rounded-full hover:bg-white/25 transition-colors text-sm backdrop-blur-sm"
-            >
-              More Info
-            </Link>
-            {!title.is_free && (
-              <span className="text-sm text-[#F5C842] font-mono">
-                ◈ {title.rent_credits} rent · {title.buy_credits} buy
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { PreviewSlider, Slide } from "@/components/home/PreviewSlider";
 
 function Rail({ label, titles, size = "md" }: { label: string; titles: Title[]; size?: "sm" | "md" | "lg" }) {
   if (!titles || titles.length === 0) return null;
@@ -70,39 +19,45 @@ function Rail({ label, titles, size = "md" }: { label: string; titles: Title[]; 
   );
 }
 
+/** Pane 1: advance poster for the newest release. Panes 2–5: editorial picks, then trending. */
+function buildSlides(r: HomeRails): Slide[] {
+  const slides: Slide[] = [];
+  const seen = new Set<string>();
+  const add = (t: Title | undefined, advance = false) => {
+    if (!t || seen.has(t.id) || slides.length >= 5) return;
+    seen.add(t.id);
+    slides.push({ title: t, advance });
+  };
+  add(r.new_releases?.[0], true);
+  [...(r.hero ?? []), ...(r.trending ?? []), ...(r.new_releases ?? [])].forEach((t) => add(t));
+  return slides;
+}
+
+const RAILS: { key: keyof HomeRails; label: string; size?: "sm" | "md" | "lg" }[] = [
+  { key: "new_releases", label: "⚡ New Releases", size: "lg" },
+  { key: "documentary",  label: "📽️ Documentary" },
+  { key: "crime",        label: "🔍 True Crime" },
+  { key: "horror",       label: "👻 Horror" },
+  { key: "comedy",       label: "😂 Comedy" },
+];
+
 export default function HomePage() {
   const [rails, setRails] = useState<HomeRails | null>(null);
-  const [featured, setFeatured] = useState<Title | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const r = await api.titles.homeRails();
-        setRails(r);
-        // Pick hero from trending or new releases
-        const heroPool = [...(r.trending ?? []), ...(r.new_releases ?? [])];
-        if (heroPool.length > 0) {
-          setFeatured(heroPool[Math.floor(Math.random() * Math.min(3, heroPool.length))]);
-        }
-      } catch (e) {
-        console.error("Failed to load home rails", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    api.titles.homeRails()
+      .then(setRails)
+      .catch((e) => console.error("Failed to load home rails", e))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen">
-        <LandingHero />
-        <div className="flex items-center justify-center py-24">
-          <div className="text-center">
-            <div className="text-5xl mb-4 animate-pulse">◈</div>
-            <p className="text-[#5A607A]">Loading…</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-pulse">◈</div>
+          <p className="text-[#5A607A]">Loading…</p>
         </div>
       </div>
     );
@@ -110,28 +65,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* Bazzy landing hero with spinning logo */}
-      <LandingHero />
-
-      {/* Hero */}
-      {featured && <HeroBanner title={featured} />}
+      {/* Preview slider: 5 panes, rotates every 3 s */}
+      {rails && <PreviewSlider slides={buildSlides(rails)} />}
 
       {/* Rails */}
       {rails && (
         <div className="mt-8">
-          {rails.trending?.length > 0 && <Rail label="🔥 Trending Now" titles={rails.trending} size="md" />}
-          {rails.new_releases?.length > 0 && <Rail label="⚡ New Releases" titles={rails.new_releases} size="lg" />}
-          {rails.fan_picks?.length > 0 && <Rail label="🗳️ Fan Picks" titles={rails.fan_picks} />}
-          {rails.documentary?.length > 0 && <Rail label="📽️ Documentary" titles={rails.documentary} />}
-          {rails.romance?.length > 0 && <Rail label="💕 Romance" titles={rails.romance} />}
-          {rails.crime?.length > 0 && <Rail label="🔍 Crime" titles={rails.crime} />}
-          {rails.horror?.length > 0 && <Rail label="👻 Horror" titles={rails.horror} />}
-          {(() => {
-            const seen = new Set<string>();
-            const free = [...rails.trending, ...rails.new_arrivals, ...rails.new_releases]
-              .filter((t) => t.is_free && !seen.has(t.id) && seen.add(t.id));
-            return free.length > 0 ? <Rail label="🎁 Free to Watch" titles={free} size="sm" /> : null;
-          })()}
+          {RAILS.map(({ key, label, size }) => (
+            <Rail key={key} label={label} titles={rails[key] ?? []} size={size} />
+          ))}
         </div>
       )}
 

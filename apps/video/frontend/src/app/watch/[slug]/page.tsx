@@ -12,6 +12,7 @@ const CAT_COLORS: Record<string, string> = {
   crime: "#E05252",
   horror: "#9B72CF",
   new_releases: "#F5C842",
+  comedy: "#3DCC7E",
 };
 
 function StarRating({ value, onRate }: { value: number; onRate: (v: number) => void }) {
@@ -50,6 +51,16 @@ export default function WatchPage() {
   const [inWatchlist, setInWatchlist] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [highlightRent, setHighlightRent] = useState(false);
+
+  // Arriving from the home slider (/watch/<slug>#rent): bring the Rent button into view
+  useEffect(() => {
+    if (loading || !title || window.location.hash !== "#rent") return;
+    document.getElementById("rent")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightRent(true);
+    const t = setTimeout(() => setHighlightRent(false), 2500);
+    return () => clearTimeout(t);
+  }, [loading, title]);
 
   useEffect(() => {
     async function load() {
@@ -167,11 +178,9 @@ export default function WatchPage() {
       {showPlayer && title.hls_master_url && (
         <div className="bg-black">
           <VideoPlayer
-            hlsUrl={title.hls_master_url}
-            titleId={title.id}
-            titleName={title.title}
-            isFree={title.is_free}
-            onClose={() => setShowPlayer(false)}
+            // VideoPlayer reads hls_manifest_url; pass the normalized URL through it
+            title={{ ...title, hls_manifest_url: title.hls_master_url }}
+            onComplete={() => setShowPlayer(false)}
           />
         </div>
       )}
@@ -212,7 +221,11 @@ export default function WatchPage() {
             )}
 
             {/* Action row */}
-            <div className="flex flex-wrap items-center gap-4 mb-8">
+            <div
+              id="rent"
+              className={`flex flex-wrap items-center gap-4 mb-8 scroll-mt-24 rounded-2xl transition-shadow duration-500
+                ${highlightRent ? "ring-2 ring-[#4F8EF7] ring-offset-8 ring-offset-[#0A0C14]" : ""}`}
+            >
               {hasAccess ? (
                 <button
                   onClick={() => setShowPlayer(true)}

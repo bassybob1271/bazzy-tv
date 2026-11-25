@@ -23,7 +23,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const api = {
   auth: {
-    register: (data: { email: string; password: string; display_name: string; is_filmmaker?: boolean }) =>
+    register: (data: { email: string; password: string; display_name: string; is_filmmaker?: boolean; bio?: string }) =>
       request<{ access_token: string; user_id: string; role: string }>("/auth/register", {
         method: "POST", body: JSON.stringify(data),
       }),
@@ -112,7 +112,7 @@ export interface Title {
 }
 export interface HomeRails { hero: Title[]; trending: Title[]; new_arrivals: Title[];
   documentary: Title[]; romance: Title[]; crime: Title[]; horror: Title[];
-  new_releases: Title[]; fan_picks: Title[]; }
+  new_releases: Title[]; fan_picks: Title[]; comedy: Title[]; }
 export interface DiscoverParams { mood?: string; category?: string; min_runtime?: number; max_runtime?: number; limit?: number; }
 export interface WalletInfo { credit_balance: number; lifetime_credits: number; usd_equivalent: number; }
 export interface CreditTier { usd: number; credits: number; bonus: number; }

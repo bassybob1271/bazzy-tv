@@ -8,6 +8,7 @@ const CAT_COLORS: Record<string, string> = {
   crime: "#E05252",
   horror: "#9B72CF",
   new_releases: "#F5C842",
+  comedy: "#3DCC7E",
 };
 
 interface TitleCardProps {

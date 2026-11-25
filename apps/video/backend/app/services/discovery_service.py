@@ -45,6 +45,7 @@ class DiscoveryService:
             "crime":          await self.get_by_category(db, ContentCategory.CRIME, 20),
             "horror":         await self.get_by_category(db, ContentCategory.HORROR, 20),
             "new_releases":   await self.get_by_category(db, ContentCategory.NEW_RELEASES, 20),
+            "comedy":         await self.get_by_category(db, ContentCategory.COMEDY, 20),
             "fan_picks":      await self.get_fan_picks(db, limit=20),
         }
 
