@@ -13,9 +13,14 @@ cd ~/Developer && git clone https://github.com/bassybob1271/bazzy-tv.git
 bash ~/Developer/bazzy-tv/apps/video/deploy/mac-mini/start.sh
 ```
 
-The script asks for the Backblaze key for the `bazzyvideo` bucket on first run.
-It expects the Stowage (BazzyBox) checkout at `~/Stowage` unless `STOWAGE_DIR` is set — once BazzyBox is imported,
-set `STOWAGE_DIR=~/Developer/bazzy-tv/apps/box`.
+The script asks for the Backblaze key for the `bazzyvideo` bucket on first run, links "Sign in with Bazzy TV"
+into BazzyBox and Bazzy Live, and adds bazzyvideo.com to the Cloudflare Tunnel.
+
+It finds BazzyBox, Bazzy Live and the tunnel config in this repo (`apps/box`, `apps/live`, `infra/cloudflared`)
+once Stowage is imported; until then it uses `~/Stowage` (override with `STOWAGE_DIR`).
+
+The tunnel, BazzyBox and Bazzy Live run under the launchd service `io.bazzy.stack`, set up from Stowage. After the
+import, point that service at `~/Developer/bazzy-tv` (its plist still references `~/Stowage`).
 
 ## Storage
 

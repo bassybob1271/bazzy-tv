@@ -1,8 +1,12 @@
 #!/bin/bash
 # Run Bazzy TV on the Bazzy Mac mini (Docker Desktop) and publish it at https://bazzyvideo.com
-# through the same Cloudflare Tunnel as Bazzy Live and BazzyBox (~/Stowage).
+# through the same Cloudflare Tunnel as Bazzy Live and BazzyBox.
 #
-#   bash ~/bazzy-video/deploy/mac-mini/start.sh
+#   bash ~/Developer/bazzy-tv/apps/video/deploy/mac-mini/start.sh
+#
+# Finds BazzyBox, Bazzy Live and the tunnel config in the bazzy-tv monorepo
+# (apps/box, apps/live, infra/cloudflared) once Stowage is imported; until then in ~/Stowage
+# (override with STOWAGE_DIR).
 #
 # First run: creates .env with fresh secrets, asks for a Backblaze key for the bazzyvideo bucket,
 # turns on "Sign in with Bazzy TV" in BazzyBox and Bazzy Live, builds and starts everything.
@@ -10,7 +14,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 HOST=${TV_HOST:-bazzyvideo.com}
-STOWAGE=${STOWAGE_DIR:-$HOME/Stowage}
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+if [ -z "${STOWAGE_DIR:-}" ] && [ -n "$ROOT" ] && [ -f "$ROOT/infra/cloudflared/native.yml" ]; then
+  BOX_DIR="$ROOT/apps/box"; LIVE_DIR="$ROOT/apps/live"; TUNNEL_YML="$ROOT/infra/cloudflared/native.yml"
+else
+  STOWAGE=${STOWAGE_DIR:-$HOME/Stowage}
+  BOX_DIR="$STOWAGE"; LIVE_DIR="$STOWAGE/apps/live"; TUNNEL_YML="$STOWAGE/deploy/cloudflared/native.yml"
+fi
 say() { printf '\n\033[1;34m▸\033[0m %s\n' "$*"; }
 rnd() { openssl rand -hex "${1:-32}"; }
 set_var() { # file, name, value — replace or append NAME=value
@@ -57,10 +67,10 @@ if [ ! -f .env ]; then
   set_var .env OAUTH_CLIENTS "[{\"client_id\":\"bazzybox\",\"client_secret\":\"$BOX_SECRET\",\"name\":\"BazzyBox\",\"redirect_uris\":[\"https://box.bazzy.io/api/auth/bazzy/callback\"],\"trusted\":true},{\"client_id\":\"bazzylive\",\"client_secret\":\"$LIVE_SECRET\",\"name\":\"Bazzy Live\",\"redirect_uris\":[\"https://live.bazzy.io/auth/bazzy/callback\"],\"trusted\":true}]"
   chmod 600 .env
   # Same secrets on the BazzyBox / Bazzy Live side → "Sign in with Bazzy TV" works everywhere.
-  set_var "$STOWAGE/.env" BAZZY_AUTH_URL "https://$HOST"
-  set_var "$STOWAGE/.env" BAZZY_CLIENT_SECRET "$BOX_SECRET"
-  set_var "$STOWAGE/apps/live/.env" LIVE_BAZZY_AUTH_URL "https://$HOST"
-  set_var "$STOWAGE/apps/live/.env" LIVE_BAZZY_CLIENT_SECRET "$LIVE_SECRET"
+  set_var "$BOX_DIR/.env" BAZZY_AUTH_URL "https://$HOST"
+  set_var "$BOX_DIR/.env" BAZZY_CLIENT_SECRET "$BOX_SECRET"
+  set_var "$LIVE_DIR/.env" LIVE_BAZZY_AUTH_URL "https://$HOST"
+  set_var "$LIVE_DIR/.env" LIVE_BAZZY_CLIENT_SECRET "$LIVE_SECRET"
   echo "wrote .env (and linked BazzyBox + Bazzy Live sign-in)"
 fi
 
@@ -69,14 +79,14 @@ docker compose up -d --build
 for i in $(seq 1 90); do curl -fs -o /dev/null http://127.0.0.1:3000/ && break; sleep 4; done
 curl -fs -o /dev/null http://127.0.0.1:3000/ && echo "  Bazzy TV website is up on this Mac" || { echo "  Website didn't answer: docker compose logs --tail 50 frontend api"; exit 1; }
 
-if [ -f "$STOWAGE/deploy/cloudflared/native.yml" ]; then
+if [ -f "$TUNNEL_YML" ]; then
   say "Tunnel: https://$HOST → this Mac"
-  Y="$STOWAGE/deploy/cloudflared/native.yml"
+  Y="$TUNNEL_YML"
   for h in "$HOST" "www.$HOST"; do
     if ! grep -q "hostname: $h\$" "$Y"; then
       awk -v h="$h" '/- service: http_status:404/ {print "  - hostname: " h; print "    service: http://127.0.0.1:3000"} {print}' "$Y" > "$Y.tmp" && mv "$Y.tmp" "$Y"
     fi
-    "$STOWAGE/apps/live/bin/cloudflared" tunnel route dns --overwrite-dns "$(awk '/^tunnel:/{print $2}' "$Y")" "$h" \
+    "$LIVE_DIR/bin/cloudflared" tunnel route dns --overwrite-dns "$(awk '/^tunnel:/{print $2}' "$Y")" "$h" \
       || echo "  could not route $h — is $HOST added to your Cloudflare account?"
   done
   launchctl kickstart -k "gui/$(id -u)/io.bazzy.stack" && echo "  restarted tunnel, BazzyBox and Bazzy Live"

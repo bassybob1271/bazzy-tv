@@ -6,8 +6,8 @@ One account, one wallet and one storage layer, shared by all three.
 | App | What it is | Folder | Storage bucket | Status |
 |-----|-----------|--------|----------------|--------|
 | **Bazzy Video** | Co-op streaming site — rent, buy, filmmakers keep 80% | [`apps/video`](apps/video) | `bazzyvideo` | Working: FastAPI + Next.js + Docker, B2 upload → HLS → playback |
-| **Bazzy Live** | Live events and streams | [`apps/live`](apps/live) | `bazzylive` | Not started in this repo |
-| **BazzyBox** | No-lock-in file storage for filmmakers and musicians | [`apps/box`](apps/box) | `bazzybox` | Lives in the `Stowage` repo — to be imported here |
+| **Bazzy Live** | Live events and streams | [`apps/live`](apps/live) | `bazzylive` | Running from the `Stowage` repo (`Stowage/apps/live`) — to be imported here |
+| **BazzyBox** | No-lock-in file storage for filmmakers and musicians | [`apps/box`](apps/box) | `bazzybox` | Running from the `Stowage` repo (its root) — to be imported here |
 
 ## Layout
 
@@ -15,11 +15,11 @@ One account, one wallet and one storage layer, shared by all three.
 bazzy-tv/
 ├─ apps/
 │  ├─ video/      Bazzy Video (moved here from the bazzy-video repo, full history kept)
-│  ├─ live/       Bazzy Live
-│  └─ box/        BazzyBox (from the Stowage repo)
+│  ├─ live/       Bazzy Live (from Stowage/apps/live)
+│  └─ box/        BazzyBox (from the Stowage repo root)
 ├─ platform/      Shared backend: accounts & sign-in, credits/wallet, Stripe, B2 storage, admin
 ├─ packages/ui/   Shared look: navbar, player, cards, brand
-├─ infra/         Docker, Railway, Cloudflare Tunnel, Mac mini
+├─ infra/         Docker, Railway, Cloudflare Tunnel (from Stowage/deploy/cloudflared), Mac mini
 ├─ scripts/       Repo tooling (e.g. importing Stowage)
 └─ docs/
 ```
@@ -34,8 +34,9 @@ bazzy-tv/
 | Admin & review | `apps/video/backend/app/api/routes/admin.py` | `platform/admin` |
 | Navbar, player, cards, brand | `apps/video/frontend/src/components` | `packages/ui` |
 
-Moving these out is the next step (see [docs/ROADMAP.md](docs/ROADMAP.md)). Until then, Bazzy Video's backend *is* the platform:
-Bazzy Live and BazzyBox already sign in through it ("Sign in with Bazzy TV").
+Bazzy Video's backend is already the platform's account service: Bazzy Live and BazzyBox sign in through it
+("Sign in with Bazzy TV", OAuth 2.0 + PKCE). Box and Live look like Node/Next.js apps, so the platform is shared as a
+**service they call**, not a library they import. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Working on it
 
