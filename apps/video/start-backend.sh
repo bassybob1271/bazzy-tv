@@ -14,7 +14,7 @@ echo ""
 cd "$BACKEND"
 
 # Install deps if needed
-if ! python3 -c "import uvicorn" 2>/dev/null; then
+if ! /usr/bin/python3 -c "import uvicorn" 2>/dev/null; then
   echo "Installing Python deps..."
   pip3 install --break-system-packages fastapi uvicorn sqlalchemy aiosqlite \
     "pydantic[email]" "python-jose[cryptography]" "passlib[bcrypt]" \
@@ -22,4 +22,4 @@ if ! python3 -c "import uvicorn" 2>/dev/null; then
 fi
 
 export USE_SQLITE=1
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+/usr/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
