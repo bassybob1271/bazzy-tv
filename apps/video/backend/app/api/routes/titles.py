@@ -7,7 +7,7 @@ from typing import Optional, List
 from app.db.database import get_db
 from app.models.models import (
     Title, ContentCategory, ContentStatus, User,
-    ViewingHistory, Watchlist, ContentAccess, AccessType
+    ViewingHistory, Watchlist, ContentAccess, AccessType, UserRole
 )
 from app.core.security import get_current_user, get_filmmaker_user
 from app.services.discovery_service import DiscoveryService
@@ -158,12 +158,21 @@ async def upload_master(
     db: AsyncSession = Depends(get_db),
 ):
     """Accept master video upload. Queues transcode job via Celery."""
-    import tempfile, os
-    # Save to temp
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-        content = await file.read()
-        tmp.write(content)
-        tmp_path = tmp.name
+    import os, shutil, uuid as _uuid
+    from app.core.config import settings
+    title = await db.get(Title, title_id)
+    if not title:
+        raise HTTPException(404, "Title not found")
+    fm = current_user.filmmaker_profile
+    if current_user.role != UserRole.ADMIN and (not fm or fm.id != title.filmmaker_id):
+        raise HTTPException(403, "You can only upload masters for your own titles")
+
+    # Stream to the volume shared with the worker (never load the whole file in memory)
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    ext = os.path.splitext(file.filename or "")[1].lower() or ".mp4"
+    tmp_path = os.path.join(settings.UPLOAD_DIR, f"{title_id}-{_uuid.uuid4().hex[:8]}{ext}")
+    with open(tmp_path, "wb") as out:
+        shutil.copyfileobj(file.file, out, length=8 * 1024 * 1024)
 
     # Queue async transcode (Celery task)
     from app.workers.transcode_worker import transcode_title

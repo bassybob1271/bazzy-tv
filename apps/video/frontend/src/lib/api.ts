@@ -1,7 +1,7 @@
 /**
  * Bazzy Video — API client
  */
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bv_token") : null;
@@ -60,6 +60,8 @@ export const api = {
     get: (slug: string) => request<Title>(`/titles/${slug}`),
     /** Alias so watch/[slug]/page.tsx can call api.titles.detail(slug) */
     detail: (slug: string) => request<Title>(`/titles/${slug}`),
+    /** Signed playback link for a title stored in B2 (checks access) */
+    play: (id: string) => request<{ hls_url: string }>(`/titles/${id}/play`),
     /** Signed-in viewer's access to a title (free / rented / bought) */
     access: (id: string) =>
       request<{ has_access: boolean; access_type: "free" | "rent" | "buy" | null; expires_at: string | null }>(`/titles/${id}/access`),

@@ -158,3 +158,22 @@ async def grant_credits(
     db.add(txn)
     await db.commit()
     return {"granted": credits, "user_id": user_id}
+
+
+# ── Storage (Backblaze B2) ────────────────────────────────────────────────────
+
+@router.get("/storage/health")
+async def storage_health(current_user=Depends(get_admin_user)):
+    """Round-trip test against the B2 bucket: write, read, presign, delete."""
+    from app.services import storage
+    return storage.health()
+
+
+@router.post("/storage/cors")
+async def storage_cors(current_user=Depends(get_admin_user)):
+    """Let the website's origins fetch video segments straight from B2."""
+    from app.core.config import settings
+    from app.services import storage
+    origins = sorted({o for o in settings.ALLOWED_ORIGINS} | {"http://localhost:3000"})
+    storage.set_cors(origins)
+    return {"bucket": settings.B2_BUCKET, "allowed_origins": origins}

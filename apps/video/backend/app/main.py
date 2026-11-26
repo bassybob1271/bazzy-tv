@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import engine, Base
 from app.seed import seed_demo_catalog
-from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider
+from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider, stream
 import structlog, os
 
 logger = structlog.get_logger()
@@ -61,6 +61,7 @@ app.include_router(titles.router,     prefix="/api/v1")
 app.include_router(wallet.router,     prefix="/api/v1")
 app.include_router(filmmaker.router,  prefix="/api/v1")
 app.include_router(admin.router,      prefix="/api/v1")
+app.include_router(stream.router,     prefix="/api/v1")
 
 
 @app.get("/health")

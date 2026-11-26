@@ -48,48 +48,60 @@ export function VideoPlayer({ title, onComplete }: VideoPlayerProps) {
     const video = videoRef.current;
     if (!video || !title.hls_manifest_url) return;
 
-    const src = title.hls_manifest_url;
     setLoadError("");
+    let cancelled = false;
     // Try to start right away. Phones (iOS especially) may refuse to start a
     // video with sound on their own; it then stays paused with the big Play
     // button showing, and a tap starts it.
     const tryPlay = () => { video.play().catch(() => {}); };
-    const useNative = () => {
-      video.src = src;
-      video.load();
-      tryPlay();
+    const start = (src: string) => {
+      const useNative = () => {
+        video.src = src;
+        video.load();
+        tryPlay();
+      };
+
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          backBufferLength: 90,
+        });
+        hlsRef.current = hls;
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+        hls.on(Hls.Events.ERROR, (_e, data) => {
+          if (!data.fatal) return;
+          hls.destroy();
+          hlsRef.current = null;
+          // Fall back to the browser's own HLS support (Safari / iOS), else report
+          if (video.canPlayType("application/vnd.apple.mpegurl")) useNative();
+          else setLoadError("This video couldn't be loaded. Check your connection and try again.");
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        // Safari / iOS native HLS
+        useNative();
+      } else {
+        setLoadError("This browser can't play this video.");
+      }
     };
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 90,
-      });
-      hlsRef.current = hls;
-      hls.loadSource(src);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
-      hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (!data.fatal) return;
-        hls.destroy();
-        hlsRef.current = null;
-        // Fall back to the browser's own HLS support (Safari / iOS), else report
-        if (video.canPlayType("application/vnd.apple.mpegurl")) useNative();
-        else setLoadError("This video couldn't be loaded. Check your connection and try again.");
-      });
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      // Safari / iOS native HLS
-      useNative();
-    } else {
-      setLoadError("This browser can't play this video.");
-    }
+    // Uploaded titles live in the private B2 bucket: ask the API for a signed
+    // playback link (it also checks the viewer's rental/purchase).
+    // Demo/external titles already carry a full https URL.
+    const stored = title.hls_manifest_url;
+    if (/^https?:\/\//.test(stored)) start(stored);
+    else api.titles.play(title.id)
+      .then(({ hls_url }) => { if (!cancelled) start(hls_url); })
+      .catch((e: Error) => { if (!cancelled) setLoadError(e.message || "This video couldn't be loaded."); });
 
     return () => {
+      cancelled = true;
       hlsRef.current?.destroy();
       if (pingRef.current) clearInterval(pingRef.current);
     };
-  }, [title.hls_manifest_url]);
+  }, [title.id, title.hls_manifest_url]);
 
   const handlePlay = () => { setIsPlaying(true); startCreditPing(); };
   const handlePause = () => { setIsPlaying(false); if (pingRef.current) clearInterval(pingRef.current); };

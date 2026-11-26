@@ -16,8 +16,6 @@ celery[redis]==5.4.0
 # kombu 5.6+ requires redis-py >= 6.1; keep it compatible with redis 5.2.0 above
 kombu==5.4.2
 boto3==1.35.80
-oci==2.138.1
-cloudflare==3.1.1
 python-dotenv==1.0.1
 structlog==24.4.0
 sentry-sdk[fastapi]==2.19.2

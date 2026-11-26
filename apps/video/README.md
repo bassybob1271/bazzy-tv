@@ -13,7 +13,7 @@
 | **Cache / Broker** | Redis 7 |
 | **Queue** | Celery + Redis; Kafka for event streaming |
 | **Transcoding** | FFmpeg — HLS adaptive ladder (4K → 360p) |
-| **Storage** | OCI Object Storage (hot) + Backblaze B2 (cold) |
+| **Storage** | Backblaze B2 — bucket `bazzyvideo` (S3 API), optional Bunny CDN in front |
 | **CDN / DRM** | Cloudflare Stream — Widevine L1/L3 + FairPlay |
 | **Payments** | Stripe Checkout, Stripe Connect, Stripe Tax |
 | **Frontend** | Next.js 14 + TypeScript + hls.js + Zustand + Tailwind |
@@ -59,7 +59,7 @@ Gross revenue
 git clone https://github.com/bassybob1271/bazzy-video.git
 cd bazzy-video
 cp .env.example .env
-# Edit .env — add Stripe keys, OCI creds, Cloudflare token
+# Edit .env — add Stripe keys and your Backblaze B2 key (B2_KEY_ID / B2_APP_KEY / B2_ENDPOINT)
 ```
 
 ### 2. Start all services
@@ -83,6 +83,21 @@ On first start with an empty database the API loads 12 demo titles (New Orleans-
 | `admin@bazzy.tv` | Admin |
 
 Set `SEED_DEMO=false` in `.env` for production.
+
+### Media storage (Backblaze B2)
+Masters and HLS output live in the `bazzyvideo` bucket (B2's S3 API wants the lowercase name):
+`masters/<title>/…` (originals), `titles/<title>/master.m3u8`, `…/<quality>/index.m3u8` + `segNNNNN.ts`, `…/sprites/sprite.jpg`.
+
+**Upload:** the API streams the file to the volume it shares with the worker → the worker transcodes the HLS ladder
+(skipping qualities above the source), archives the master and uploads everything to B2 → the title goes to the admin review queue.
+
+**Playback:** the player calls `GET /api/v1/titles/{id}/play`, which checks the viewer's rental/purchase and returns
+`/api/v1/stream/{id}/master.m3u8?t=<token>`. That endpoint serves playlists from B2 and points every segment at
+`B2_PUBLIC_URL` (your Bunny pull zone) or, when that's empty, at a presigned B2 link that expires after 6 h —
+so the bucket can stay private. Demo titles with full https URLs play directly.
+
+**Check it:** `docker compose exec api python -m app.b2_check` round-trips a test file and sets the bucket's CORS
+rules for the site. Admins can also call `GET /api/v1/admin/storage/health`.
 
 ### 3. Local backend dev
 ```bash
@@ -176,7 +191,7 @@ OCI Ashburn (primary) + Cloudflare CDN layer.
 Cost vs AWS: **~58% cheaper** per 2-hour stream ($0.685 vs $1.616).
 
 ```
-OCI Object Storage → Cloudflare CDN → HLS → hls.js player
+Backblaze B2 → (Bunny CDN) → access-checked HLS playlists from the API → hls.js player
                                    ↕
                           Widevine / FairPlay DRM
                           Forensic watermark (per session)
