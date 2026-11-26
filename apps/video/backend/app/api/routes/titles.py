@@ -199,6 +199,28 @@ async def buy_title(
     return {"status": "purchased", "permanent": True, "charged": True}
 
 
+@router.get("/{title_id}/access")
+async def my_access(
+    title_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Whether the signed-in viewer can watch this title (free, rented or bought)."""
+    title = (await db.execute(select(Title).where(Title.id == title_id))).scalar_one_or_none()
+    if not title:
+        raise HTTPException(404, "Title not found")
+    if title.is_free:
+        return {"has_access": True, "access_type": "free", "expires_at": None}
+    grant = await credits_svc.active_access(db, current_user.id, title_id)
+    if not grant:
+        return {"has_access": False, "access_type": None, "expires_at": None}
+    return {
+        "has_access": True,
+        "access_type": "buy" if grant.access_type == AccessType.BUY else "rent",
+        "expires_at": grant.expires_at,
+    }
+
+
 @router.post("/{title_id}/stream-ping")
 async def stream_ping(
     title_id: str,

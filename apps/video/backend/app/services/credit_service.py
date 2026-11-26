@@ -97,6 +97,14 @@ class CreditService:
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(404, "User not found")
+
+        # Free titles, and titles the viewer has rented (unexpired) or bought,
+        # are already paid for: no per-minute charge.
+        title = (await db.execute(select(Title).where(Title.id == title_id))).scalar_one_or_none()
+        if not title:
+            raise HTTPException(404, "Title not found")
+        if title.is_free or await self.active_access(db, user_id, title_id):
+            return user.credit_balance
         if user.credit_balance < credits_to_debit:
             raise HTTPException(402, "Insufficient credits")
 

@@ -1,6 +1,6 @@
 "use client";
 /**
- * Home page preview slider — five panes, auto-advancing every 3 seconds.
+ * Home page preview slider — five panes, auto-advancing every 5 seconds.
  *
  * Pane 1 is the advance (teaser) poster for the newest release.
  * Click a pane once to play its preview in place (rotation pauses);
@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import Hls from "hls.js";
 import { Title } from "@/lib/api";
 
-const ROTATE_MS = 3000;
+const ROTATE_MS = 5000;
 
 export interface Slide {
   title: Title;
@@ -89,7 +89,7 @@ export function PreviewSlider({ slides }: { slides: Slide[] }) {
     setIndex(((i % count) + count) % count);
   }, [count]);
 
-  // Rotate every 3 s; restarts after any manual change, paused while previewing
+  // Rotate every 5 s; restarts after any manual change, paused while previewing
   useEffect(() => {
     if (previewing || count < 2) return;
     const t = setTimeout(() => setIndex((i) => (i + 1) % count), ROTATE_MS);
@@ -166,7 +166,7 @@ export function PreviewSlider({ slides }: { slides: Slide[] }) {
               >
                 <div className="max-w-2xl [text-shadow:0_2px_12px_rgba(0,0,0,0.6)]">
                   <span className={`inline-block text-xs font-bold uppercase tracking-[0.25em] mb-4 ${slide.advance ? "text-[#E33B3B]" : "text-[#4F8EF7]"}`}>
-                    {slide.advance ? "New on Bazzy · Advance Poster" : "Featured"}
+                    {slide.advance ? "New on Bazzy" : "Featured"}
                   </span>
                   <h2 className={`font-black leading-[1.02] mb-4 ${slide.advance ? "text-5xl md:text-8xl" : "text-4xl md:text-7xl"}`}>{t.title}</h2>
                   {t.synopsis && (

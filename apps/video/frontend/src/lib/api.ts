@@ -60,6 +60,9 @@ export const api = {
     get: (slug: string) => request<Title>(`/titles/${slug}`),
     /** Alias so watch/[slug]/page.tsx can call api.titles.detail(slug) */
     detail: (slug: string) => request<Title>(`/titles/${slug}`),
+    /** Signed-in viewer's access to a title (free / rented / bought) */
+    access: (id: string) =>
+      request<{ has_access: boolean; access_type: "free" | "rent" | "buy" | null; expires_at: string | null }>(`/titles/${id}/access`),
     becauseYouWatched: (id: string) => request<Title[]>(`/titles/${id}/because-you-watched`),
     rent: (id: string) => request<{ status: string }>(`/titles/${id}/rent`, { method: "POST" }),
     buy: (id: string) => request<{ status: string }>(`/titles/${id}/buy`, { method: "POST" }),

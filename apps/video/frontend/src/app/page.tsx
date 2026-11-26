@@ -65,7 +65,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* Preview slider: 5 panes, rotates every 3 s */}
+      {/* Preview slider: 5 panes, rotates every 5 s */}
       {rails && <PreviewSlider slides={buildSlides(rails)} />}
 
       {/* Rails */}

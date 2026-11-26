@@ -24,6 +24,7 @@ export function VideoPlayer({ title, onComplete }: VideoPlayerProps) {
   const [duration, setDuration] = useState(0);
   const [quality, setQuality] = useState("auto");
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState("");
 
   // Credit debit heartbeat — 1 cr/min
   const startCreditPing = useCallback(() => {
@@ -47,6 +48,18 @@ export function VideoPlayer({ title, onComplete }: VideoPlayerProps) {
     const video = videoRef.current;
     if (!video || !title.hls_manifest_url) return;
 
+    const src = title.hls_manifest_url;
+    setLoadError("");
+    // Try to start right away. Phones (iOS especially) may refuse to start a
+    // video with sound on their own; it then stays paused with the big Play
+    // button showing, and a tap starts it.
+    const tryPlay = () => { video.play().catch(() => {}); };
+    const useNative = () => {
+      video.src = src;
+      video.load();
+      tryPlay();
+    };
+
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
@@ -54,13 +67,22 @@ export function VideoPlayer({ title, onComplete }: VideoPlayerProps) {
         backBufferLength: 90,
       });
       hlsRef.current = hls;
-      hls.loadSource(title.hls_manifest_url);
+      hls.loadSource(src);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
+      hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (!data.fatal) return;
+        hls.destroy();
+        hlsRef.current = null;
+        // Fall back to the browser's own HLS support (Safari / iOS), else report
+        if (video.canPlayType("application/vnd.apple.mpegurl")) useNative();
+        else setLoadError("This video couldn't be loaded. Check your connection and try again.");
+      });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      // Safari native HLS
-      video.src = title.hls_manifest_url;
-      video.play().catch(() => {});
+      // Safari / iOS native HLS
+      useNative();
+    } else {
+      setLoadError("This browser can't play this video.");
     }
 
     return () => {
@@ -76,8 +98,10 @@ export function VideoPlayer({ title, onComplete }: VideoPlayerProps) {
   const handleEnded = () => { setIsPlaying(false); onComplete?.(); };
 
   const togglePlay = () => {
-    if (!videoRef.current) return;
-    isPlaying ? videoRef.current.pause() : videoRef.current.play();
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => setLoadError("Playback was blocked. Tap Play to try again."));
+    else v.pause();
   };
 
   const seek = (pct: number) => {
@@ -98,12 +122,35 @@ export function VideoPlayer({ title, onComplete }: VideoPlayerProps) {
         onTimeUpdate={handleTimeUpdate}
         onDurationChange={handleDurationChange}
         onEnded={handleEnded}
+        onError={() => setLoadError("This video couldn't be loaded. Check your connection and try again.")}
+        onClick={togglePlay}
         playsInline
+        preload="auto"
       />
 
+      {/* Big Play button while paused: also the tap target when autoplay is blocked */}
+      {!isPlaying && !loadError && (
+        <button
+          type="button"
+          onClick={togglePlay}
+          className="absolute inset-0 m-auto w-20 h-20 rounded-full bg-black/50 backdrop-blur-sm border-2 border-white/60
+                     flex items-center justify-center text-white text-3xl hover:bg-black/70"
+          aria-label="Play"
+        >
+          ▶
+        </button>
+      )}
+
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center p-6 bg-black/70 text-center text-sm text-white">
+          {loadError}
+        </div>
+      )}
+
       {/* Controls overlay */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4
-                      opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Shown while paused, on hover, and always on touch screens (no hover there) */}
+      <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity
+                      ${isPlaying ? "opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100" : "opacity-100"}`}>
         {/* Scrub bar */}
         <div
           className="w-full h-1 bg-white/30 rounded cursor-pointer mb-3"
@@ -119,7 +166,7 @@ export function VideoPlayer({ title, onComplete }: VideoPlayerProps) {
         </div>
 
         <div className="flex items-center gap-4 text-white text-sm">
-          <button onClick={togglePlay} className="hover:text-[#4F8EF7] transition-colors">
+          <button onClick={togglePlay} className="hover:text-[#4F8EF7] transition-colors text-lg px-1" aria-label={isPlaying ? "Pause" : "Play"}>
             {isPlaying ? "⏸" : "▶"}
           </button>
           <span className="tabular-nums">{formatTime(currentTime)} / {formatTime(duration)}</span>

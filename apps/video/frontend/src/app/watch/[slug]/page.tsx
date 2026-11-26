@@ -53,6 +53,25 @@ export default function WatchPage() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [highlightRent, setHighlightRent] = useState(false);
 
+  // The player opens at the top of the page; on phones the Play button is
+  // further down, so bring the player into view.
+  useEffect(() => {
+    if (showPlayer) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [showPlayer]);
+
+  // Signed in: check whether this viewer already rented or bought the title.
+  // Runs again once a saved sign-in is restored after page load.
+  const titleId = title?.id;
+  const titleIsFree = title?.is_free;
+  useEffect(() => {
+    if (!titleId || titleIsFree || !isAuthenticated) return;
+    let cancelled = false;
+    api.titles.access(titleId)
+      .then((a) => { if (!cancelled && a.has_access) setHasAccess(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [titleId, titleIsFree, isAuthenticated]);
+
   // Arriving from the home slider (/watch/<slug>#rent): bring the Rent button into view
   useEffect(() => {
     if (loading || !title || window.location.hash !== "#rent") return;
@@ -185,8 +204,8 @@ export default function WatchPage() {
         </div>
       )}
 
-      {/* Detail section */}
-      <div className="px-6 md:px-16 -mt-20 relative z-10 pb-10">
+      {/* Detail section: overlaps the hero, but must not cover the player */}
+      <div className={`px-6 md:px-16 relative z-10 pb-10 ${showPlayer ? "mt-6" : "-mt-20"}`}>
         <div className="flex gap-8 items-start">
           {/* Poster */}
           {title.poster_url && (
