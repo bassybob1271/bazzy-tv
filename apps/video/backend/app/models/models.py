@@ -49,6 +49,8 @@ class TransactionType(str, enum.Enum):
     PAYOUT           = "payout"
     PROMO_GRANT      = "promo_grant"
     REFUND           = "refund"
+    APP_DEBIT        = "app_debit"    # BazzyBox storage, Bazzy Live tickets: charged from the shared wallet
+    APP_CREDIT       = "app_credit"   # refunds and top-ups made inside those apps
 
 
 class AccessType(str, enum.Enum):
@@ -222,6 +224,20 @@ class CreditTransaction(Base):
     user = relationship("User", back_populates="transactions")
 
     __table_args__ = (Index("ix_txn_user_created", "user_id", "created_at"),)
+
+
+class AppWalletEntry(Base):
+    """One wallet across Bazzy TV, Bazzy Live and BazzyBox: every charge or credit an app makes, keyed by
+    "<client_id>:<ref>" so a retried request is applied once."""
+    __tablename__ = "app_wallet_entries"
+
+    id         = Column(String(200), primary_key=True)
+    client_id  = Column(String(64), nullable=False)
+    user_id    = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    credits    = Column(BigInteger, nullable=False)
+    txn_id     = Column(String(36), ForeignKey("credit_transactions.id"), nullable=True)
+    applied    = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class FilmmakerEarning(Base):

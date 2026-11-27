@@ -32,7 +32,10 @@ os.environ.update({
     ).decode().replace("\n", "\\n"),
     "OAUTH_CLIENTS": json.dumps([{
         "client_id": "bazzybox", "client_secret": "box-secret", "name": "BazzyBox",
-        "redirect_uris": ["https://box.test/api/auth/bazzy/callback"], "trusted": True,
+        "redirect_uris": ["https://box.test/api/auth/bazzy/callback"], "trusted": True, "wallet": True,
+    }, {
+        "client_id": "nowallet", "client_secret": "nw-secret", "name": "Other",
+        "redirect_uris": ["https://other.test/cb"],
     }]),
 })
 
@@ -46,7 +49,7 @@ from app.api.routes import social  # noqa: E402
 from app.core.security import hash_password, verify_password  # noqa: E402
 from app.db.database import AsyncSessionLocal, Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models.models import OAuthIdentity, User  # noqa: E402
+from app.models.models import CreditTransaction, OAuthIdentity, User  # noqa: E402
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -271,3 +274,55 @@ async def test_pkce_mismatch_and_wrong_redirect_fail():
         bad = await c.post("/api/v1/oauth/authorize", headers={"Authorization": f"Bearer {s['token']}"},
                            json={"client_id": "bazzybox", "redirect_uri": "https://box.test/other", "code_challenge": challenge})
         assert bad.status_code == 400
+
+
+# ── One wallet for every Bazzy app ─────────────────────────────────────────────
+
+BOX_AUTH = "Basic " + base64.b64encode(b"bazzybox:box-secret").decode()
+
+
+async def member(credits: int, email: str) -> str:
+    async with AsyncSessionLocal() as db:
+        u = User(email=email, hashed_password=hash_password("x" * 12), credit_balance=credits, is_verified=True)
+        db.add(u)
+        await db.commit()
+        return u.id
+
+
+async def test_app_reads_and_charges_the_shared_wallet():
+    sub = await member(1000, "wallet1@example.com")
+    async with client() as c:
+        assert (await c.get(f"/api/v1/apps/wallet/{sub}", headers={"authorization": BOX_AUTH})).json() == {"credits": 1000}
+        r = await c.post(f"/api/v1/apps/wallet/{sub}/entries", headers={"authorization": BOX_AUTH},
+                         json={"credits": -300, "ref": "plan-1", "note": "Flex, 30 days"})
+        assert r.status_code == 200 and r.json() == {"applied": True, "accepted": True, "credits": 700}
+        # Retried request: applied once.
+        again = await c.post(f"/api/v1/apps/wallet/{sub}/entries", headers={"authorization": BOX_AUTH},
+                             json={"credits": -300, "ref": "plan-1", "note": "Flex, 30 days"})
+        assert again.json()["applied"] is False and again.json()["credits"] == 700
+        # Same ref, different amount: refused.
+        assert (await c.post(f"/api/v1/apps/wallet/{sub}/entries", headers={"authorization": BOX_AUTH},
+                             json={"credits": -5, "ref": "plan-1"})).status_code == 409
+        # Shows on the member's Bazzy TV statement.
+        async with AsyncSessionLocal() as db:
+            txns = (await db.execute(select(CreditTransaction).where(CreditTransaction.user_id == sub))).scalars().all()
+        assert [(t.credits_delta, t.description) for t in txns] == [(-300, "BazzyBox · Flex, 30 days")]
+
+
+async def test_charge_past_balance_is_refused_and_changes_nothing():
+    sub = await member(50, "wallet2@example.com")
+    async with client() as c:
+        r = await c.post(f"/api/v1/apps/wallet/{sub}/entries", headers={"authorization": BOX_AUTH}, json={"credits": -51, "ref": "big"})
+        assert r.status_code == 402 and r.json()["detail"]["credits"] == 50
+        ok = await c.post(f"/api/v1/apps/wallet/{sub}/entries", headers={"authorization": BOX_AUTH}, json={"credits": 25, "ref": "refund-1"})
+        assert ok.json()["credits"] == 75
+
+
+async def test_wallet_needs_a_wallet_app_with_its_secret():
+    sub = await member(10, "wallet3@example.com")
+    async with client() as c:
+        bad = "Basic " + base64.b64encode(b"bazzybox:wrong").decode()
+        assert (await c.get(f"/api/v1/apps/wallet/{sub}", headers={"authorization": bad})).status_code == 401
+        other = "Basic " + base64.b64encode(b"nowallet:nw-secret").decode()
+        assert (await c.get(f"/api/v1/apps/wallet/{sub}", headers={"authorization": other})).status_code == 403
+        assert (await c.get(f"/api/v1/apps/wallet/{sub}")).status_code == 401

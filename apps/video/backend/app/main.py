@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import engine, Base
 from app.seed import seed_demo_catalog
-from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider, stream
+from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider, stream, app_wallet
 import structlog, os
 
 logger = structlog.get_logger()
@@ -25,6 +25,10 @@ async def lifespan(app: FastAPI):
                 DO $$ BEGIN
                   IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'contentcategory') THEN
                     ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'COMEDY';
+                  END IF;
+                  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transactiontype') THEN
+                    ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'APP_DEBIT';
+                    ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'APP_CREDIT';
                   END IF;
                 END $$;
             """))
@@ -59,6 +63,7 @@ app.include_router(social.router,     prefix="/api/v1")
 app.include_router(provider.router,   prefix="/api/v1")
 app.include_router(titles.router,     prefix="/api/v1")
 app.include_router(wallet.router,     prefix="/api/v1")
+app.include_router(app_wallet.router, prefix="/api/v1")
 app.include_router(filmmaker.router,  prefix="/api/v1")
 app.include_router(admin.router,      prefix="/api/v1")
 app.include_router(stream.router,     prefix="/api/v1")
