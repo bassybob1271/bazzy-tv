@@ -15,6 +15,17 @@ interface AuthState {
   logout: () => void;
 }
 
+/** Tells bazzy.tv this browser has a Bazzy account, so the landing page sends it straight to the app.
+ *  Only works on *.bazzy.tv hosts (a browser won't set a bazzy.tv cookie from another domain). */
+function setMemberMarker(on: boolean) {
+  if (typeof document === "undefined") return;
+  const host = location.hostname;
+  if (host !== "bazzy.tv" && !host.endsWith(".bazzy.tv")) return;
+  document.cookie = on
+    ? "bazzy_member=video; Domain=.bazzy.tv; Path=/; Max-Age=31536000; SameSite=Lax; Secure"
+    : "bazzy_member=; Domain=.bazzy.tv; Path=/; Max-Age=0; SameSite=Lax; Secure";
+}
+
 interface WalletState {
   wallet: WalletInfo | null;
   fetchWallet: () => Promise<void>;
@@ -45,10 +56,12 @@ export const useStore = create<BazzyStore>()(
 
       login: (token, userId, role) => {
         localStorage.setItem("bv_token", token);
+        setMemberMarker(true);
         set({ token, userId, role, isAuthenticated: true });
       },
       logout: () => {
         localStorage.removeItem("bv_token");
+        setMemberMarker(false);
         set({ token: null, userId: null, role: null, isAuthenticated: false, wallet: null });
       },
 

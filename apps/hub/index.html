@@ -10,6 +10,25 @@
 <meta property="og:image" content="brand/hero-wave.webp">
 <meta name="theme-color" content="#07070a">
 <link rel="icon" href="brand/favicon.png">
+<script>
+/* Members skip the landing page. Each app sets `bazzy_member=<app>` on .bazzy.tv when someone
+   signs in (and clears it on sign-out); it holds no account data. ?home always shows this page. */
+// Where each app lives. Flip `open` to true when an address is live.
+window.BAZZY_APPS = {
+  video: { url: "https://video.bazzy.tv", open: false },
+  live:  { url: "https://live.bazzy.io",  open: true },
+  box:   { url: "https://box.bazzy.io",   open: true },
+};
+(function () {
+  try {
+    if (/[?&]home\b/.test(location.search)) return;
+    var m = document.cookie.match(/(?:^|;\s*)bazzy_member=(video|live|box)\b/);
+    if (!m) return;
+    var app = window.BAZZY_APPS[m[1]];
+    if (app && app.open) location.replace(app.url);
+  } catch (e) {}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -121,7 +140,7 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
 </head>
 <body>
 <header><div class="wrap bar">
-  <a class="logo" href="#top"><img src="brand/bazzy-logo.webp" alt="" width="40" height="40">Bazzy TV</a>
+  <a class="logo" href="?home"><img src="brand/bazzy-logo.webp" alt="" width="40" height="40">Bazzy TV</a>
   <nav aria-label="Bazzy apps"><a data-link="video" href="#">Video</a><a data-link="live" href="#">Live</a><a data-link="box" href="#">BazzyBox</a></nav>
 </div></header>
 
@@ -218,12 +237,7 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
 
 <script>
 {
-  // Where each app lives. Flip `open` to true when an address is live.
-  const APPS = {
-    video: { url: "https://video.bazzy.tv", open: false },
-    live:  { url: "https://live.bazzy.io",  open: true },
-    box:   { url: "https://box.bazzy.io",   open: true },
-  };
+  const APPS = window.BAZZY_APPS;
   // Shows at Greenhouse BK. Dates as printed on the posters; a show with no year shown assumes 2026.
   const SHOWS = [
     { img: "sweata-cozy-night", title: "A Cozy Night in Brooklyn", who: "Sweata", date: "2026-12-17", label: "Dec 17" },

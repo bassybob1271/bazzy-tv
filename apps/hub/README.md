@@ -15,3 +15,18 @@ In the Cloudflare account that holds the **bazzy.tv** zone:
    Cloudflare adds the DNS records itself. Your Google Workspace mail records (MX/TXT) are untouched.
 
 Every push to `main` redeploys the page.
+
+## Members skip this page
+
+The landing page is for new visitors. When someone signs in to an app, the app sets a marker cookie for the whole
+domain; bazzy.tv sees it and sends them straight to that app (before the page draws). `bazzy.tv/?home` always shows
+the landing page.
+
+```
+bazzy_member=<video|live|box>; Domain=.bazzy.tv; Path=/; Max-Age=31536000; SameSite=Lax; Secure
+```
+
+Set it on sign-in, clear it (`Max-Age=0`) on sign-out. It holds no account data. Bazzy Video does this already
+(`apps/video/frontend/src/store/useStore.ts`). **It only works for apps on `*.bazzy.tv`** — a browser won't let
+box.bazzy.io or live.bazzy.io set a bazzy.tv cookie — so Live and Box join once they move to live.bazzy.tv and
+box.bazzy.tv. An app that isn't open yet (see `BAZZY_APPS` in `index.html`) never triggers the redirect.
