@@ -67,7 +67,15 @@ export function LivePlayer({ title, onEnded }: { title: Title; onEnded?: () => v
         hls = new Hls({
           lowLatencyMode: true,
           liveSyncDurationCount: 3,
-          xhrSetup: (xhr) => { if (pass) xhr.setRequestHeader("Authorization", `Bearer ${pass}`); },
+          // The pass rides on every playlist and segment request: in the address (MediaMTX hands the
+          // query to the Bazzy API for its ticket check) and as a header.
+          xhrSetup: (xhr, url) => {
+            if (!pass) return;
+            const u = new URL(url, window.location.href);
+            u.searchParams.set("jwt", pass);
+            xhr.open("GET", u.toString(), true);
+            xhr.setRequestHeader("Authorization", `Bearer ${pass}`);
+          },
         });
         hls.loadSource(src);
         hls.attachMedia(video);
