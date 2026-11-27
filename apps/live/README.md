@@ -46,7 +46,12 @@ the Mac, even though everything works from the Mac itself. So on a Mac, MediaMTX
 ```bash
 bash apps/live/mediamtx/native/start.sh        # download once, start in the background
 bash apps/live/mediamtx/native/start.sh stop
+bash apps/live/mediamtx/native/start.sh install    # start at every login, restart if it stops (launchd)
 ```
+
+For a venue Mac that should come back on its own after a restart or power cut, also: Docker Desktop →
+Settings → General → start when you sign in; macOS → Users & Groups → log in automatically; Energy →
+start up after a power failure and don't sleep when the display is off.
 
 It uses the same settings, checks every publish/read with the API on localhost:8000, keeps recordings in
 `Bazzy TV/recordings/`, and logs to `Bazzy TV/ingest.log`. The Live site reaches it at
