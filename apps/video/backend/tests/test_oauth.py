@@ -527,3 +527,122 @@ async def test_invite_signup_confirm_and_get_paid():
         assert dash["unsettled_credits"] == 180
         # The link can't be used as a sign-in.
         assert (await c.get("/api/v1/filmmaker/dashboard", headers={"authorization": f"Bearer {link}"})).status_code == 401
+
+
+# ── Bazzy Live on the shared backend: one account, one wallet, splits ─────────
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+from app.core.config import settings as _settings  # noqa: E402
+from app.models.models import ContentAccess, ContentStatus, LiveState, Title  # noqa: E402
+
+
+async def approve(title_id: str):
+    async with AsyncSessionLocal() as db:
+        t = await db.get(Title, title_id)
+        t.status = ContentStatus.LIVE
+        await db.commit()
+
+
+async def test_a_concert_from_scheduling_to_split_payouts():
+    _settings.MEDIAMTX_HOOK_SECRET = "hook-secret"
+    band = await member(0, "the-band@example.com")
+    await member(0, "greenhouse@example.com")
+    fan = await member(500, "fan@example.com")
+    late = await member(150, "late@example.com")
+    starts = datetime.now(timezone.utc) + timedelta(days=10)
+    async with client() as c:
+        # A member with no creator profile schedules a show at Greenhouse BK.
+        r = await c.post("/api/v1/live/", headers=bearer(band), json={
+            "title": "Four Voices", "performer_name": "The Band", "venue": "Greenhouse BK",
+            "starts_at": starts.isoformat(), "category": "concerts"})
+        assert r.status_code == 201, r.text
+        show = r.json()["title_id"]
+        ingest = r.json()["ingest"]
+        assert ingest["server_url"].startswith("rtmp://") and "?key=" in ingest["stream_key"]
+        # Shows can't be dressed up as films.
+        assert (await c.post("/api/v1/live/", headers=bearer(band), json={"title": "x", "starts_at": starts.isoformat(), "category": "documentary"})).status_code == 400
+
+        # The band splits it with the venue; the show id is the split's source.
+        r = await c.post("/api/v1/splits", headers=bearer(band), json={
+            "name": "Four Voices", "app": "live", "source_ref": show,
+            "shares": [{"email": "the-band@example.com", "role": "band", "percent": 70},
+                       {"email": "greenhouse@example.com", "role": "venue", "percent": 30}]})
+        assert r.status_code == 201
+
+        await approve(show)
+        # On Bazzy Live, not in the film catalog.
+        upcoming = (await c.get("/api/v1/live/home-rails")).json()["upcoming"]
+        assert [t["id"] for t in upcoming] == [show] and upcoming[0]["venue"] == "Greenhouse BK"
+        assert show not in [t["id"] for t in (await c.get("/api/v1/titles/")).json()]
+
+        # A fan buys a ticket weeks ahead from the one Bazzy wallet: good through 30 days after the show.
+        r = await c.post(f"/api/v1/titles/{show}/rent", headers=bearer(fan))
+        assert r.status_code == 200, r.text
+        async with AsyncSessionLocal() as db:
+            assert (await db.get(User, fan)).credit_balance == 300
+            grant = (await db.execute(select(ContentAccess).where(ContentAccess.user_id == fan))).scalar_one()
+            assert grant.expires_at.replace(tzinfo=timezone.utc) >= starts + timedelta(days=29, hours=23)
+            txn = (await db.execute(select(CreditTransaction).where(CreditTransaction.user_id == fan))).scalars().all()
+            assert [t.description for t in txn] == ["Ticket: Four Voices"]
+        # 200 → 144 creator share → 101 band (70% + rounding) / 43 venue.
+        st = (await c.get(f"/api/v1/splits/{(await c.get('/api/v1/splits', headers=bearer(band))).json()[0]['id']}/statement", headers=bearer(band))).json()
+        assert {p["role"]: p["credits"] for p in st["people"]} == {"band": 101, "venue": 43}
+
+        # Not on air yet: the playback endpoint says so.
+        assert (await c.get(f"/api/v1/live/{show}/playback", headers=bearer(fan))).json()["live_state"] == "scheduled"
+
+        # The ATEM connects: MediaMTX checks the key, then reports the feed is up.
+        pid, key = ingest["stream_key"].split("?key=")
+        auth = lambda body: c.post("/api/v1/live/ingest/auth?secret=hook-secret", json=body)
+        assert (await auth({"action": "publish", "path": f"live/{pid}", "query": "key=wrong"})).status_code == 401
+        assert (await auth({"action": "publish", "path": f"live/{pid}", "query": f"key={key}"})).status_code == 200
+        assert (await c.post(f"/api/v1/live/ingest/hook?secret=hook-secret&event=ready&path=live/{pid}")).json()["live_state"] == "on_air"
+
+        # Ticket holders get a pass MediaMTX accepts; no ticket, no stream.
+        pb = (await c.get(f"/api/v1/live/{show}/playback", headers=bearer(fan))).json()
+        assert pb["live_state"] == "on_air" and pb["hls_url"].endswith(f"/live/{pid}/index.m3u8")
+        assert (await auth({"action": "read", "path": f"live/{pid}", "query": f"jwt={pb['token']}"})).status_code == 200
+        assert (await auth({"action": "read", "path": f"live/{pid}", "query": "jwt=nope"})).status_code == 401
+        assert (await c.get(f"/api/v1/live/{show}/playback", headers=bearer(late))).status_code == 402
+        # The pass can't be used to sign in.
+        assert (await c.get("/api/v1/wallet/", headers={"authorization": f"Bearer {pb['token']}"})).status_code == 401
+
+        # Someone joining mid-show pays 100, from the same wallet.
+        r = await c.post(f"/api/v1/live/{show}/join", headers=bearer(late))
+        assert r.json()["credits"] == 100
+        async with AsyncSessionLocal() as db:
+            assert (await db.get(User, late)).credit_balance == 50
+
+        # The band ends it: it moves to previous shows.
+        assert (await c.post(f"/api/v1/live/{show}/end", headers=bearer(band))).json()["live_state"] == "ended"
+        rails = (await c.get("/api/v1/live/home-rails")).json()
+        assert [t["id"] for t in rails["concerts"]] == [show] and rails["upcoming"] == []
+        # Becoming an artist on Live doesn't grant film uploads on Bazzy TV.
+        async with AsyncSessionLocal() as db:
+            assert (await db.get(User, band)).role == UserRole.VIEWER
+
+
+async def test_someone_elses_show_is_off_limits():
+    owner = await member(0, "owner-artist@example.com")
+    other = await member(0, "other-artist@example.com")
+    async with client() as c:
+        show = (await c.post("/api/v1/live/", headers=bearer(owner), json={
+            "title": "Mine", "starts_at": datetime.now(timezone.utc).isoformat()})).json()["title_id"]
+        await c.post("/api/v1/live/", headers=bearer(other), json={"title": "Theirs", "starts_at": datetime.now(timezone.utc).isoformat()})
+        for path in (f"/api/v1/live/{show}/end", f"/api/v1/live/{show}/rotate-key"):
+            assert (await c.post(path, headers=bearer(other))).status_code == 404
+        assert (await c.get(f"/api/v1/live/{show}/atem-streaming.xml", headers=bearer(other))).status_code == 404
+        xml = await c.get(f"/api/v1/live/{show}/atem-streaming.xml", headers=bearer(owner))
+        assert xml.status_code == 200 and "<name>Bazzy Live</name>" in xml.text
+
+
+async def test_google_sign_in_started_on_live_returns_to_live():
+    _settings.LIVE_SITE_URL = "https://live.test"
+    async with client() as c:
+        r = await c.get("/api/v1/auth/oauth/google/start", params={"next": "/shows", "site": "live"})
+        q = parse_qs(urlparse(r.headers["location"]).query)
+        NEXT.clear()
+        NEXT.update(sub="g-live-fan", email="livefan@example.com", email_verified=True, nonce=q["nonce"][0])
+        r = await c.get("/api/v1/auth/oauth/google/callback", params={"code": "good-code", "state": q["state"][0]})
+    assert r.status_code == 303 and r.headers["location"].startswith("https://live.test/auth/callback#")
+    assert fragment(r.headers["location"])["next"] == "/shows"

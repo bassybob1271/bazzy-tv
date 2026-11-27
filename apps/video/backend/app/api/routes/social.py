@@ -81,6 +81,14 @@ def redirect_uri(provider: str) -> str:
     return f"{public_url()}/api/v1/auth/oauth/{provider}/callback"
 
 
+def site_url(site: str | None) -> str:
+    """Where to land after sign-in. Google and Apple always return to Bazzy TV (the address registered
+    with them); a sign-in started on Bazzy Live (?site=live) is then sent back to the Live site."""
+    if site == "live":
+        return settings.LIVE_SITE_URL.rstrip("/")
+    return public_url()
+
+
 def safe_next(path: str | None) -> str:
     """Only same-site paths: '/wallet' yes, '//evil.com' or 'https://…' no."""
     if not path or not path.startswith("/") or path.startswith("//") or "\\" in path:
@@ -226,7 +234,7 @@ async def providers():
 
 
 @router.get("/oauth/{provider}/start")
-async def start(provider: str, next: str | None = None):
+async def start(provider: str, next: str | None = None, site: str | None = None):
     if provider not in PROVIDERS or not is_configured(provider):
         raise HTTPException(404, "sign-in provider not available")
     state, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
@@ -245,7 +253,8 @@ async def start(provider: str, next: str | None = None):
         params["response_mode"] = "form_post"  # required by Apple when asking for name/email
 
     cookie = jwt.encode(
-        {"p": provider, "s": state, "n": nonce, "v": verifier, "next": safe_next(next), "exp": int(time.time()) + STATE_TTL},
+        {"p": provider, "s": state, "n": nonce, "v": verifier, "next": safe_next(next),
+         "site": "live" if site == "live" else "tv", "exp": int(time.time()) + STATE_TTL},
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
@@ -259,11 +268,12 @@ async def start(provider: str, next: str | None = None):
     return resp
 
 
-def _to_site(fragment: dict[str, str] | None = None, error: str | None = None, next_path: str = "/") -> RedirectResponse:
+def _to_site(fragment: dict[str, str] | None = None, error: str | None = None, next_path: str = "/", site: str | None = None) -> RedirectResponse:
+    base = site_url(site)
     if error:
-        url = f"{public_url()}/auth/login?error={quote(error)}"
+        url = f"{base}/auth/login?error={quote(error)}"
     else:
-        url = f"{public_url()}/auth/callback#{urlencode(fragment or {})}"
+        url = f"{base}/auth/callback#{urlencode(fragment or {})}"
     resp = RedirectResponse(url, status_code=303)
     resp.delete_cookie(STATE_COOKIE, path="/api/v1/auth/oauth")
     return resp
@@ -285,10 +295,11 @@ async def callback(provider: str, request: Request, db: AsyncSession = Depends(g
         st = jwt.decode(request.cookies.get(STATE_COOKIE, ""), settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError:
         return _to_site(error="Your sign-in session expired. Try again.")
+    site = st.get("site")
     if st.get("p") != provider or not secrets.compare_digest(str(st.get("s", "")), str(params.get("state", ""))):
-        return _to_site(error="Sign-in could not be verified. Try again.")
+        return _to_site(error="Sign-in could not be verified. Try again.", site=site)
     if not params.get("code"):
-        return _to_site(error="Sign-in failed. Try again.")
+        return _to_site(error="Sign-in failed. Try again.", site=site)
 
     try:
         tokens = await exchange_code(provider, params["code"], st.get("v"))
@@ -306,8 +317,8 @@ async def callback(provider: str, request: Request, db: AsyncSession = Depends(g
         await db.commit()
     except HTTPException as e:
         await db.rollback()
-        return _to_site(error=str(e.detail)[:200])
+        return _to_site(error=str(e.detail)[:200], site=site)
 
     token = create_access_token({"sub": user.id, "role": _role(user)})
     log.info("oauth.login", provider=provider, user_id=user.id)
-    return _to_site({"token": token, "user_id": user.id, "role": _role(user), "next": st.get("next", "/")})
+    return _to_site({"token": token, "user_id": user.id, "role": _role(user), "next": st.get("next", "/")}, site=site)

@@ -29,6 +29,24 @@ class ContentCategory(str, enum.Enum):
     HORROR       = "horror"
     NEW_RELEASES = "new_releases"
     COMEDY       = "comedy"
+    # Bazzy Live shows
+    CONCERTS       = "concerts"
+    ALBUM_RELEASES = "album_releases"
+    LISTENING      = "listening"
+    SCREENINGS     = "screenings"
+    SOUND_BATHS    = "sound_baths"
+
+
+# Categories that belong on Bazzy Live, not in the film catalog.
+LIVE_CATEGORIES = ("CONCERTS", "ALBUM_RELEASES", "LISTENING", "SCREENINGS", "SOUND_BATHS")
+
+
+class LiveState(str, enum.Enum):
+    """Where a Bazzy Live show is in its life. Films have no live_state. Separate from ContentStatus,
+    which is moderation (a show is listed once an admin sets it LIVE)."""
+    SCHEDULED = "scheduled"   # upcoming: poster on the home slider, tickets on sale
+    ON_AIR    = "on_air"      # the ATEM is publishing right now
+    ENDED     = "ended"       # finished: shows under Previous Livestreams
 
 
 class ContentStatus(str, enum.Enum):
@@ -194,6 +212,33 @@ class Title(Base):
 
     created_at  = Column(DateTime(timezone=True), server_default=func.now())
     updated_at  = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Bazzy Live: a title with a live_state is a show (concert, listening party…), not a film.
+    performer_name = Column(String(300))                 # who's on the bill
+    venue          = Column(String(300))
+    starts_at      = Column(DateTime(timezone=True), index=True)
+    ended_at       = Column(DateTime(timezone=True))
+    live_state     = Column(Enum(LiveState), nullable=True, index=True)
+    playback_id    = Column(String(32), unique=True, index=True)  # public: /hls/live/<playback_id>/
+    stream_key     = Column(String(64))                  # secret: only the artist's ATEM knows it
+
+    @property
+    def is_show(self) -> bool:
+        return self.live_state is not None
+
+    @property
+    def preview_hls_url(self):
+        """Public, silent 4:3 preview of a show that's on air (made by MediaMTX)."""
+        from app.core.config import settings
+        if self.live_state == LiveState.ON_AIR and self.playback_id:
+            return f"{settings.LIVE_HLS_BASE}/live/{self.playback_id}_preview/index.m3u8"
+        return None
+
+    @property
+    def join_credits(self) -> int:
+        """Price to join a show while it's on air."""
+        from app.core.config import settings
+        return 0 if self.is_free or not self.is_show else settings.CREDITS_JOIN_LIVE
 
     filmmaker       = relationship("FilmmakerProfile", back_populates="titles")
     viewing_history = relationship("ViewingHistory", back_populates="title")

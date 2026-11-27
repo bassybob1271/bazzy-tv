@@ -157,6 +157,43 @@ services:
     depends_on: [api]
 
   # ─────────────────────────────────────────────
+  # Bazzy Live: its own site on the same API, database and wallet,
+  # plus MediaMTX, which takes the ATEM's RTMP feed and serves HLS.
+  # ─────────────────────────────────────────────
+  mediamtx:
+    image: bluenviron/mediamtx:1.9.3-ffmpeg   # -ffmpeg variant has wget for the hooks
+    restart: unless-stopped
+    environment:
+      # Settings live in ../live/mediamtx/mediamtx.yml; only the secret-bearing ones are here
+      MTX_AUTHHTTPADDRESS: http://api:8000/api/v1/live/ingest/auth?secret=${MEDIAMTX_HOOK_SECRET}
+      MEDIAMTX_HOOK_SECRET: ${MEDIAMTX_HOOK_SECRET}   # read by the hook scripts
+    ports:
+      - "1935:1935"   # RTMP: the ATEM streams here
+      - "8888:8888"   # HLS (the Live site proxies /hls here; open for testing)
+    volumes:
+      - ../live/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - ../live/mediamtx/hooks:/hooks:ro
+      - live_recordings:/recordings
+    depends_on: [api]
+
+  live-web:
+    build:
+      context: ../live/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1   # same-origin; Next proxies to the shared api
+        API_INTERNAL_URL: http://api:8000
+        MEDIAMTX_INTERNAL_URL: http://mediamtx:8888   # /hls/* is proxied here
+        NEXT_PUBLIC_STRIPE_PK: ${STRIPE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID: ${STRIPE_CONNECT_CLIENT_ID}
+        NEXT_PUBLIC_BAZZY_TV_URL: ${PUBLIC_URL:-http://localhost:3000}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3001:3000"   # 3000 is Bazzy TV's
+    depends_on: [api]
+
+  # ─────────────────────────────────────────────
   # Nginx reverse proxy
   # ─────────────────────────────────────────────
   nginx:
@@ -178,3 +215,4 @@ volumes:
   zookeeper_data:
   zookeeper_log:
   media_uploads:
+  live_recordings:

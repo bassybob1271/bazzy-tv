@@ -1,0 +1,43 @@
+# Bazzy Live — MediaMTX (live ingest from the ATEM switcher)
+#
+#   ATEM ──RTMP :1935──▶ live/<playback_id>           full show, ticket holders only
+#                     └▶ live/<playback_id>_preview   silent 4:3 low-res copy, public
+#                                                     (home page "now live" preview)
+#
+# Every publish/read is checked by the API: authHTTPAddress is set from the
+# environment (MTX_AUTHHTTPADDRESS in docker-compose.yml) because it carries
+# the shared secret. Unset keys use MediaMTX defaults.
+
+rtsp: no
+webrtc: no
+srt: no
+
+rtmp: yes
+rtmpAddress: :1935
+
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: yes        # playlist ready as soon as the feed starts
+hlsVariant: mpegts         # widest player support
+hlsSegmentDuration: 2s
+hlsAllowOrigin: "*"
+
+authMethod: http
+
+pathDefaults:
+  # Keep a recording of every show (for replays)
+  record: yes
+  recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+  # Feed up: tell the API and start the public preview. Feed down: tell the API.
+  runOnReady: sh /hooks/on_ready.sh
+  runOnReadyRestart: yes
+  runOnNotReady: sh /hooks/on_notready.sh
+
+paths:
+  # The preview is made from the show itself: no recording, no hooks
+  "~^live/[a-f0-9]+_preview$":
+    record: no
+    runOnReady: ""
+    runOnReadyRestart: no
+    runOnNotReady: ""
+  all_others:

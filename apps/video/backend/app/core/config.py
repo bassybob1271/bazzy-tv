@@ -63,6 +63,17 @@ class Settings(BaseSettings):
     # Public address of the website (the Next.js app, which proxies /api). Used to build
     # OAuth redirect URIs and the post-login redirect, e.g. https://video.bazzy.tv
     PUBLIC_URL: str = "http://localhost:3000"
+    # The Bazzy Live website (same API, its own look): sign-ins started there return there.
+    LIVE_SITE_URL: str = "http://localhost:3001"
+
+    # Bazzy Live ingest: the ATEM streams RTMP to MediaMTX, viewers watch HLS.
+    # INGEST_RTMP_URL is what artists type into ATEM Software Control.
+    INGEST_RTMP_URL: str = "rtmp://ingest.bazzy.tv/live"
+    LIVE_HLS_BASE: str = "/hls"           # browser path to MediaMTX's HLS server
+    MEDIAMTX_HOOK_SECRET: str = ""        # shared secret for MediaMTX → API callbacks
+    PLAYBACK_TOKEN_HOURS: int = 8         # how long a viewer's stream pass lasts
+    CREDITS_TICKET_DEFAULT: int = 200     # a show ticket (includes 30 days of replay)
+    CREDITS_JOIN_LIVE: int = 100          # join a show already on air (includes replay)
 
     # Outgoing mail (verification links, split invites). Google Workspace: smtp.gmail.com:587 with an
     # app password. Empty SMTP_HOST logs messages instead of sending them.

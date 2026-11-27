@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from pydantic import BaseModel
+from datetime import datetime
 from typing import Optional, List
 from app.db.database import get_db
 from app.models.models import (
@@ -54,6 +55,14 @@ class TitleOut(BaseModel):
     completion_rate: float
     fan_vote_score: float
     status: str
+    # Bazzy Live shows (empty for films)
+    performer_name: Optional[str] = None
+    venue: Optional[str] = None
+    starts_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    live_state: Optional[str] = None
+    preview_hls_url: Optional[str] = None   # only while on air
+    join_credits: int = 0                    # price to join while on air
 
     class Config:
         from_attributes = True
@@ -68,7 +77,7 @@ async def list_titles(
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Title).where(Title.status == ContentStatus.LIVE)
+    stmt = select(Title).where(Title.status == ContentStatus.LIVE, Title.live_state.is_(None))  # films only
     if category:
         stmt = stmt.where(Title.category == category)
     stmt = stmt.order_by(desc(Title.completion_rate)).offset(offset).limit(limit)

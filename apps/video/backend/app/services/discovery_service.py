@@ -8,7 +8,7 @@ Signal weights:
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc
-from app.models.models import Title, ContentCategory, ContentStatus, FanVote
+from app.models.models import Title, ContentCategory, ContentStatus, FanVote, LiveState
 from app.core.config import settings
 from typing import Optional, List
 import re
@@ -49,10 +49,43 @@ class DiscoveryService:
             "fan_picks":      await self.get_fan_picks(db, limit=20),
         }
 
+    # ── Bazzy Live ───────────────────────────────────────────────────────────
+
+    async def get_live_rails(self, db: AsyncSession) -> dict:
+        """upcoming: posters for the slider (on air first, then soonest).
+        previous + categories: finished shows, newest first."""
+        return {
+            "upcoming":       await self.get_upcoming(db, limit=7),
+            "previous":       await self.get_previous(db, limit=20),
+            "concerts":       await self.get_previous(db, 20, ContentCategory.CONCERTS),
+            "album_releases": await self.get_previous(db, 20, ContentCategory.ALBUM_RELEASES),
+            "listening":      await self.get_previous(db, 20, ContentCategory.LISTENING),
+            "screenings":     await self.get_previous(db, 20, ContentCategory.SCREENINGS),
+            "sound_baths":    await self.get_previous(db, 20, ContentCategory.SOUND_BATHS),
+        }
+
+    async def get_upcoming(self, db: AsyncSession, limit: int = 7) -> List[Title]:
+        result = await db.execute(
+            select(Title)
+            .where(Title.status == ContentStatus.LIVE,
+                   Title.live_state.in_([LiveState.ON_AIR, LiveState.SCHEDULED]))
+            .order_by(Title.live_state, Title.starts_at)   # ON_AIR sorts before SCHEDULED
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def get_previous(self, db: AsyncSession, limit: int = 20,
+                           category: Optional[ContentCategory] = None) -> List[Title]:
+        stmt = select(Title).where(Title.status == ContentStatus.LIVE, Title.live_state == LiveState.ENDED)
+        if category:
+            stmt = stmt.where(Title.category == category)
+        result = await db.execute(stmt.order_by(desc(Title.starts_at)).limit(limit))
+        return result.scalars().all()
+
     async def get_trending(self, db: AsyncSession, limit: int = 20) -> List[Title]:
         result = await db.execute(
             select(Title)
-            .where(Title.status == ContentStatus.LIVE)
+            .where(Title.status == ContentStatus.LIVE, Title.live_state.is_(None))
             .order_by(desc(Title.revenue_velocity), desc(Title.view_count))
             .limit(limit)
         )
@@ -61,7 +94,7 @@ class DiscoveryService:
     async def get_editorial_picks(self, db: AsyncSession, limit: int = 10) -> List[Title]:
         result = await db.execute(
             select(Title)
-            .where(Title.status == ContentStatus.LIVE, Title.editorial_score > 0.5)
+            .where(Title.status == ContentStatus.LIVE, Title.live_state.is_(None), Title.editorial_score > 0.5)
             .order_by(desc(Title.editorial_score))
             .limit(limit)
         )
@@ -70,7 +103,7 @@ class DiscoveryService:
     async def get_fan_picks(self, db: AsyncSession, limit: int = 20) -> List[Title]:
         result = await db.execute(
             select(Title)
-            .where(Title.status == ContentStatus.LIVE)
+            .where(Title.status == ContentStatus.LIVE, Title.live_state.is_(None))
             .order_by(desc(Title.fan_vote_score))
             .limit(limit)
         )
@@ -81,7 +114,7 @@ class DiscoveryService:
         cutoff = datetime.utcnow() - timedelta(days=90)
         result = await db.execute(
             select(Title)
-            .where(Title.status == ContentStatus.LIVE, Title.published_at >= cutoff)
+            .where(Title.status == ContentStatus.LIVE, Title.live_state.is_(None), Title.published_at >= cutoff)
             .order_by(desc(Title.published_at))
             .limit(limit)
         )
@@ -91,7 +124,7 @@ class DiscoveryService:
                                category: ContentCategory, limit: int = 20) -> List[Title]:
         result = await db.execute(
             select(Title)
-            .where(Title.status == ContentStatus.LIVE, Title.category == category)
+            .where(Title.status == ContentStatus.LIVE, Title.live_state.is_(None), Title.category == category)
             .order_by(desc(Title.completion_rate), desc(Title.fan_vote_score))
             .limit(limit)
         )
@@ -125,7 +158,7 @@ class DiscoveryService:
                 matched_mood = params
                 break
 
-        stmt = select(Title).where(Title.status == ContentStatus.LIVE)
+        stmt = select(Title).where(Title.status == ContentStatus.LIVE, Title.live_state.is_(None))
 
         if matched_mood:
             categories, min_rt, max_rt, editorial = matched_mood
@@ -164,7 +197,7 @@ class DiscoveryService:
         result2 = await db.execute(
             select(Title)
             .where(
-                Title.status == ContentStatus.LIVE,
+                Title.status == ContentStatus.LIVE, Title.live_state.is_(None),
                 Title.category == source.category,
                 Title.id != title_id,
                 Title.completion_rate >= max(0, source.completion_rate - 0.2),

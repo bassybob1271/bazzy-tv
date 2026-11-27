@@ -158,7 +158,8 @@ class CreditService:
         return best[1] if best else None
 
     async def purchase_access(self, db: AsyncSession, user_id: str, title_id: str,
-                               access_type: AccessType) -> tuple[bool, "ContentAccess"]:
+                               access_type: AccessType, cost: int | None = None,
+                               label: str | None = None) -> tuple[bool, "ContentAccess"]:
         """Debit credits for rent or buy, grant access.
 
         Returns (charged, grant). If the user already has access that covers the
@@ -180,7 +181,7 @@ class CreditService:
                          or access_type == AccessType.RENT):
             return False, existing
 
-        credits_cost = (
+        credits_cost = cost if cost is not None else (
             title.rent_credits if access_type == AccessType.RENT else title.buy_credits
         )
         if user.credit_balance < credits_cost:
@@ -188,7 +189,15 @@ class CreditService:
 
         user.credit_balance -= credits_cost
 
-        expires = datetime.utcnow() + timedelta(days=30) if access_type == AccessType.RENT else None
+        expires = None
+        if access_type == AccessType.RENT:
+            expires = datetime.utcnow() + timedelta(days=30)
+            # A show ticket covers the show plus 30 days of replay, even when bought weeks ahead.
+            if title.starts_at:
+                show = title.starts_at
+                if show.tzinfo is not None:
+                    show = show.astimezone(timezone.utc).replace(tzinfo=None)
+                expires = max(expires, show + timedelta(days=30))
         access = ContentAccess(
             id=str(uuid.uuid4()),
             user_id=user_id,
@@ -205,7 +214,7 @@ class CreditService:
             title_id=title_id,
             transaction_type=txn_type,
             credits_delta=-credits_cost,
-            description=f"{'Rented' if access_type == AccessType.RENT else 'Purchased'}: {title.title}",
+            description=f"{label or (('Ticket' if title.is_show else 'Rented') if access_type == AccessType.RENT else ('Replay purchased' if title.is_show else 'Purchased'))}: {title.title}",
         )
         db.add(txn)
         await self._credit_filmmaker(db, title_id, credits_cost)
@@ -226,9 +235,11 @@ class CreditService:
 
         from app.services.splits import pay_sale, sheet_for
         owner_id = (await db.execute(select(FilmmakerProfile.user_id).where(FilmmakerProfile.id == title.filmmaker_id))).scalar_one_or_none()
-        sheet = await sheet_for(db, owner_id, "tv", title_id) if owner_id else None
+        # A show's split sheet is a "live" sheet keyed by the show id; a film's is a "tv" sheet.
+        app = "live" if title.is_show else "tv"
+        sheet = await sheet_for(db, owner_id, app, title_id) if owner_id else None
         if sheet:
-            await pay_sale(db, sheet, fm_credits, f"tv:{title_id}:{uuid.uuid4()}", title_id=title_id)
+            await pay_sale(db, sheet, fm_credits, f"{app}:{title_id}:{uuid.uuid4()}", title_id=title_id)
             return
 
         earning = FilmmakerEarning(

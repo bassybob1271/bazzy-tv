@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import engine, Base
 from app.seed import seed_demo_catalog
-from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider, stream, app_wallet, splits
+from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider, stream, app_wallet, splits, live
 import structlog, os
 
 logger = structlog.get_logger()
@@ -25,6 +25,28 @@ async def lifespan(app: FastAPI):
                 DO $$ BEGIN
                   IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'contentcategory') THEN
                     ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'COMEDY';
+                  END IF;
+                  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'contentcategory') THEN
+                    ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'CONCERTS';
+                    ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'ALBUM_RELEASES';
+                    ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'LISTENING';
+                    ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'SCREENINGS';
+                    ALTER TYPE contentcategory ADD VALUE IF NOT EXISTS 'SOUND_BATHS';
+                  END IF;
+                  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'livestate') THEN
+                    CREATE TYPE livestate AS ENUM ('SCHEDULED', 'ON_AIR', 'ENDED');
+                  END IF;
+                  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'titles') THEN
+                    ALTER TABLE titles ADD COLUMN IF NOT EXISTS performer_name VARCHAR(300);
+                    ALTER TABLE titles ADD COLUMN IF NOT EXISTS venue VARCHAR(300);
+                    ALTER TABLE titles ADD COLUMN IF NOT EXISTS starts_at TIMESTAMPTZ;
+                    ALTER TABLE titles ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ;
+                    ALTER TABLE titles ADD COLUMN IF NOT EXISTS live_state livestate;
+                    ALTER TABLE titles ADD COLUMN IF NOT EXISTS playback_id VARCHAR(32);
+                    ALTER TABLE titles ADD COLUMN IF NOT EXISTS stream_key VARCHAR(64);
+                    CREATE UNIQUE INDEX IF NOT EXISTS ix_titles_playback_id ON titles (playback_id);
+                    CREATE INDEX IF NOT EXISTS ix_titles_starts_at ON titles (starts_at);
+                    CREATE INDEX IF NOT EXISTS ix_titles_live_state ON titles (live_state);
                   END IF;
                   IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transactiontype') THEN
                     ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'APP_DEBIT';
@@ -65,6 +87,7 @@ app.include_router(titles.router,     prefix="/api/v1")
 app.include_router(wallet.router,     prefix="/api/v1")
 app.include_router(app_wallet.router, prefix="/api/v1")
 app.include_router(splits.router,     prefix="/api/v1")
+app.include_router(live.router,       prefix="/api/v1")
 app.include_router(filmmaker.router,  prefix="/api/v1")
 app.include_router(admin.router,      prefix="/api/v1")
 app.include_router(stream.router,     prefix="/api/v1")
