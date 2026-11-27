@@ -68,39 +68,7 @@ h1{font:900 clamp(52px,9vw,118px)/.92 Archivo,Inter,sans-serif;letter-spacing:-.
 .btn.solid{background:#fff;color:#0b0b10}.btn.solid:hover{background:#eceef6}
 .btn.ghost{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px)}.btn.ghost:hover{background:rgba(255,255,255,.16)}
 .btn:active{transform:scale(.97)}
-.hgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(24px,4vw,56px);align-items:center}
-.stage{position:relative;justify-self:end;width:min(100%,400px)}
-.stack{position:relative;aspect-ratio:4/5}
-.stack img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:18px;box-shadow:0 30px 80px -20px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.1);transition:transform .7s cubic-bezier(.2,.8,.2,1),opacity .7s,filter .7s;transform-origin:50% 100%}
-.stack img[data-pos="0"]{transform:none;opacity:1;z-index:3}
-.stack img[data-pos="1"]{transform:translate(9%,-3%) rotate(6deg) scale(.92);opacity:.55;z-index:2;filter:saturate(.7) brightness(.7)}
-.stack img[data-pos="-1"]{transform:translate(-9%,-3%) rotate(-6deg) scale(.92);opacity:.55;z-index:2;filter:saturate(.7) brightness(.7)}
-.stack img[data-pos="x"]{transform:scale(.85);opacity:0;z-index:1}
-.cap{margin-top:18px;min-height:52px}
-.cap .when{font-size:13px;font-weight:700;color:var(--live)}
-.cap .when.past{color:var(--ink2)}
-.cap b{display:block;font:800 20px/1.2 Archivo,Inter,sans-serif}
-.dots{display:flex;gap:6px;margin-top:10px}
-.dots button{width:26px;height:4px;border:0;padding:0;border-radius:2px;background:rgba(255,255,255,.22);cursor:pointer}
-.dots button.on{background:#fff}
-.rail{padding-block:clamp(40px,6vw,72px) 0}
-.rhead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
-.rhead h2{font:800 clamp(26px,3vw,36px)/1.1 Archivo,Inter,sans-serif;letter-spacing:-.02em;margin:0 0 4px}
-.rhead p{margin:0;color:var(--ink2);font-size:15px}
-.rnav{display:flex;gap:8px;flex:none}
-.rnav button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:#fff;font-size:22px;cursor:pointer}
-.rnav button:hover{background:#1c1c26}
-.track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;scrollbar-width:none}
-.track::-webkit-scrollbar{display:none}
-.show{flex:0 0 clamp(200px,22vw,250px);scroll-snap-align:start;display:block;transition:transform .2s}
-.show:hover{transform:translateY(-4px)}
-.show .pic{position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px var(--line);background:var(--panel)}
-.show img{width:100%;height:100%;object-fit:cover;display:block}
-.show .badge{position:absolute;top:10px;left:10px;font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;background:rgba(7,7,10,.8);border:1px solid var(--line)}
-.show .badge.up{background:var(--live);border-color:transparent;color:#fff}
-.show h3{font-size:16px;font-weight:600;margin:12px 0 2px;line-height:1.3}
-.show .sub{color:var(--mute);font-size:13px}
-.doors{position:relative;z-index:2;margin-top:-20px;padding-bottom:28px}
+.doors{position:relative;z-index:2;margin-top:-56px;padding-bottom:28px}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .door{--c:#fff;position:relative;display:flex;flex-direction:column;min-height:400px;padding:28px;border-radius:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,var(--panel)),var(--panel) 55%);border:1px solid color-mix(in srgb,var(--c) 30%,transparent);overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
 .door:hover{transform:translateY(-6px);border-color:color-mix(in srgb,var(--c) 70%,transparent);box-shadow:0 30px 70px -30px color-mix(in srgb,var(--c) 60%,transparent)}
@@ -133,9 +101,9 @@ h1{font:900 clamp(52px,9vw,118px)/.92 Archivo,Inter,sans-serif;letter-spacing:-.
 footer{border-top:1px solid var(--line);padding-block:30px 40px;color:var(--mute);font-size:14px}
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
 footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
-@media(max-width:980px){.hgrid{grid-template-columns:1fr}.stage{justify-self:start;width:min(78%,340px)}.grid{grid-template-columns:1fr}.door{min-height:0}.door svg.icon{height:96px}.one .wrap{grid-template-columns:1fr}}
+@media(max-width:980px){.grid{grid-template-columns:1fr}.door{min-height:0}.door svg.icon{height:96px}.one .wrap{grid-template-columns:1fr}}
 @media(max-width:600px){.famgrid{grid-template-columns:1fr}.bar nav{display:none}.hero{min-height:620px}.hero .wrap{padding-block:110px 90px}.doors{margin-top:-40px}.facts{grid-template-columns:1fr}}
-@media(prefers-reduced-motion:reduce){.stack img{transition:none}.hero .wave,.kick i{animation:none}.door,.btn{transition:none}}
+@media(prefers-reduced-motion:reduce){.hero .wave,.kick i{animation:none}.door,.btn{transition:none}}
 </style>
 </head>
 <body>
@@ -147,18 +115,11 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
 <main id="top">
 <section class="hero">
   <div class="wave" role="img" aria-label="Bazzy waveform"></div>
-  <div class="wrap hgrid">
-    <div>
+  <div class="wrap">
       <div class="kick"><i></i>Brooklyn, NY · owned by the people who make it</div>
       <h1>Bazzy TV</h1>
       <p class="lede">Watch films, go live and keep your work safe, all on one account. 80% of every credit goes straight to the artist.</p>
-      <div class="cta"><a class="btn solid" data-link="live" href="#">Watch live</a><a class="btn ghost" data-link="box" href="#">Store your work</a></div>
-    </div>
-    <div class="stage" aria-roledescription="carousel" aria-label="Shows at Greenhouse BK">
-      <div class="stack" id="stack"></div>
-      <div class="cap" id="cap" aria-live="polite"></div>
-      <div class="dots" id="dots"></div>
-    </div>
+      <div class="cta"><a class="btn solid" data-link="video" href="#">Start watching</a><a class="btn ghost" data-link="box" href="#">Store your work</a></div>
   </div>
 </section>
 
@@ -191,14 +152,6 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
     <p>Storage for filmmakers and musicians: 3 TB for $9.99. You can leave any day and take every file with you.</p>
     <div class="go"><span data-host="box"></span><b>→</b></div>
   </a>
-</div></section>
-
-<section class="rail" aria-labelledby="rail-h"><div class="wrap">
-  <div class="rhead">
-    <div><h2 id="rail-h">Live at Greenhouse BK</h2><p>1271A Fulton St, Brooklyn · streamed on Bazzy Live</p></div>
-    <div class="rnav"><button type="button" data-dir="-1" aria-label="Previous shows">‹</button><button type="button" data-dir="1" aria-label="Next shows">›</button></div>
-  </div>
-  <div class="track" id="track"></div>
 </div></section>
 
 <section class="one"><div class="wrap">
@@ -238,51 +191,6 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
 <script>
 {
   const APPS = window.BAZZY_APPS;
-  // Shows at Greenhouse BK. Dates as printed on the posters; a show with no year shown assumes 2026.
-  const SHOWS = [
-    { img: "sweata-cozy-night", title: "A Cozy Night in Brooklyn", who: "Sweata", date: "2026-12-17", label: "Dec 17" },
-    { img: "kevin-holliday-garden", title: "Garden — Album Release Show", who: "Kevin Holliday", date: "2026-11-20", label: "Nov 20" },
-    { img: "mono-222-premiere", title: "Mono 222 — NYC Premiere", who: "Screening + party", date: "2026-11-15", label: "Nov 15, 7–11 PM" },
-    { img: "vpc-release-ritual", title: "Release Ritual", who: "VPC Ensemble with Surya Botofasina, A Space for Sound, Julie Hill", date: "2026-09-25", label: "Sept 25, 6 PM" },
-    { img: "nava-drops-album-release", title: "Album Release Event", who: "Nava Drops with Treyzis & Rajah Sound", date: "2026-08-01", label: "Aug 1" },
-    { img: "greenhouse-four-voices", title: "Four Voices", who: "Laney Tripp, Avery Friedman, Nora Stanley, Coco Smith", date: "2026-06-18", label: "June 18" },
-    { img: "feels-listening-experience", title: "Feels — Listening Experience", who: "Irrelegance", date: "", label: "" },
-  ];
-  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const upcoming = (s) => s.date && new Date(s.date + "T23:59:59") >= today;
-  const when = (s) => s.date ? (upcoming(s) ? "Upcoming · " : "Past show · ") + s.label : "Greenhouse BK";
-  const liveUrl = APPS.live.url;
-
-  // Rail
-  const track = document.getElementById("track");
-  track.innerHTML = SHOWS.map((s) => `<a class="show" href="${esc(liveUrl)}">
-      <div class="pic"><img src="posters/${esc(s.img)}.webp" alt="${esc(s.who)} — ${esc(s.title)} poster" loading="lazy" width="720" height="900">
-      ${s.date ? `<span class="badge ${upcoming(s) ? "up" : ""}">${upcoming(s) ? "Upcoming" : "Past"}</span>` : ""}</div>
-      <h3>${esc(s.who)}</h3><div class="sub">${esc(s.title)}${s.label ? " · " + esc(s.label) : ""}</div></a>`).join("");
-  document.querySelectorAll(".rnav button").forEach((b) => b.addEventListener("click", () => {
-    track.scrollBy({ left: Number(b.dataset.dir) * track.clientWidth * 0.8, behavior: "smooth" });
-  }));
-
-  // Poster stack in the hero
-  const stack = document.getElementById("stack"), cap = document.getElementById("cap"), dots = document.getElementById("dots");
-  stack.innerHTML = SHOWS.map((s, i) => `<img src="posters/${esc(s.img)}.webp" alt="${esc(s.who)} — ${esc(s.title)} poster" width="720" height="900" ${i ? 'loading="lazy"' : ""}>`).join("");
-  dots.innerHTML = SHOWS.map((s, i) => `<button type="button" aria-label="Show poster ${i + 1}: ${esc(s.who)}"></button>`).join("");
-  const imgs = [...stack.children], dotEls = [...dots.children], n = SHOWS.length;
-  let cur = 0, timer;
-  const show = (i) => {
-    cur = (i + n) % n;
-    imgs.forEach((im, k) => { const d = ((k - cur) % n + n) % n; im.dataset.pos = d === 0 ? "0" : d === 1 ? "1" : d === n - 1 ? "-1" : "x"; });
-    dotEls.forEach((d, k) => d.classList.toggle("on", k === cur));
-    const s = SHOWS[cur];
-    cap.innerHTML = `<div class="when ${upcoming(s) ? "" : "past"}">${esc(when(s))}</div><b>${esc(s.who)}</b>`;
-  };
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const start = () => { clearInterval(timer); if (!reduce) timer = setInterval(() => show(cur + 1), 4500); };
-  dotEls.forEach((d, k) => d.addEventListener("click", () => { show(k); start(); }));
-  stack.addEventListener("click", () => { show(cur + 1); start(); });
-  show(0); start();
-
   for (const [key, app] of Object.entries(APPS)) {
     for (const a of document.querySelectorAll(`[data-link="${key}"]`)) a.href = app.url;
     for (const s of document.querySelectorAll(`[data-host="${key}"]`)) s.textContent = new URL(app.url).host;
