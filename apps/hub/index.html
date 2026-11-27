@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bazzy TV</title>
+<meta name="description" content="Bazzy TV — the creator-owned home for Bazzy Video, Bazzy Live and BazzyBox. One account, one wallet, built in New Orleans.">
+<meta property="og:title" content="Bazzy TV">
+<meta property="og:description" content="Watch, go live and store your work — one account across Bazzy Video, Bazzy Live and BazzyBox.">
+<meta property="og:image" content="brand/hero-wave.webp">
+<meta name="theme-color" content="#07070a">
+<link rel="icon" href="brand/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: confident, nocturnal, creator-first — a front door, not a pitch deck.
+   IDEA: a club marquee at night: the waveform is the house sound, three lit doors lead to three rooms.
+   PICTURE: the Bazzy waveform running edge to edge behind the title, with three tall door-cards beneath it.
+   COLOUR and TYPE: black stage, Bazzy crimson #850B1E brand mark, door accents from the waveform (orange, magenta, violet); Archivo for display, Inter for text.
+   LAYOUT: logo bar, full-bleed hero (title over the wave), three equal doors in one row that stack on phones, a short "one account" band, footer. */
+:root{color-scheme:dark;--bg:#07070a;--panel:#111118;--ink:#fff;--ink2:#b9bdd0;--mute:#7a7f96;--line:rgba(255,255,255,.09);--brand:#850B1E;--video:#ff8a3d;--live:#ff3d7f;--box:#a77bff}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:clip;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:max(5vw,18px)}
+header{position:absolute;inset:0 0 auto;z-index:5}
+.bar{display:flex;align-items:center;gap:14px;height:76px}
+.logo{display:flex;align-items:center;gap:12px;font:800 20px/1 Archivo,Inter,sans-serif;letter-spacing:-.01em}
+.logo img{width:40px;height:40px;border-radius:10px;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+.bar nav{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.bar nav a{padding:10px 14px;border-radius:10px;color:var(--ink2);font-size:14px;font-weight:500}
+.bar nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
+.hero{position:relative;min-height:min(78vh,760px);display:flex;align-items:center;overflow:hidden;isolation:isolate}
+.hero .wave{position:absolute;inset:0;z-index:-2;background:url(brand/hero-wave.webp) center 58%/cover no-repeat;animation:drift 18s ease-in-out infinite alternate}
+.hero:after{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 30% 40%,rgba(7,7,10,.15),rgba(7,7,10,.75) 70%),linear-gradient(180deg,rgba(7,7,10,.55),rgba(7,7,10,0) 30%,rgba(7,7,10,0) 62%,var(--bg))}
+@keyframes drift{from{transform:scale(1.04) translateX(-1.5%)}to{transform:scale(1.1) translateX(1.5%)}}
+.hero .wrap{padding-block:120px 80px;width:100%}
+.kick{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink2);margin-bottom:18px}
+.kick i{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 rgba(255,61,127,.7);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 10px rgba(255,61,127,0)}100%{box-shadow:0 0 0 0 rgba(255,61,127,0)}}
+h1{font:900 clamp(52px,9vw,118px)/.92 Archivo,Inter,sans-serif;letter-spacing:-.035em;margin:0 0 20px;text-wrap:balance;text-shadow:0 6px 40px rgba(0,0,0,.6)}
+.lede{font-size:clamp(17px,2vw,21px);color:#e3e5ee;max-width:620px;margin:0 0 30px;text-shadow:0 2px 20px rgba(0,0,0,.8)}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;border-radius:99px;font-weight:600;font-size:15px;transition:transform .15s,background .15s}
+.btn.solid{background:#fff;color:#0b0b10}.btn.solid:hover{background:#eceef6}
+.btn.ghost{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px)}.btn.ghost:hover{background:rgba(255,255,255,.16)}
+.btn:active{transform:scale(.97)}
+.doors{position:relative;z-index:2;margin-top:-56px;padding-bottom:28px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.door{--c:#fff;position:relative;display:flex;flex-direction:column;min-height:400px;padding:28px;border-radius:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,var(--panel)),var(--panel) 55%);border:1px solid color-mix(in srgb,var(--c) 30%,transparent);overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
+.door:hover{transform:translateY(-6px);border-color:color-mix(in srgb,var(--c) 70%,transparent);box-shadow:0 30px 70px -30px color-mix(in srgb,var(--c) 60%,transparent)}
+.door.video{--c:var(--video)}.door.live{--c:var(--live)}.door.box{--c:var(--box)}
+.door svg.icon{width:74%;height:120px;margin-bottom:22px}
+.status{position:absolute;top:22px;right:22px;font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(0,0,0,.45);border:1px solid var(--line);color:var(--ink2)}
+.status.on{color:#7dffb0;border-color:rgba(125,255,176,.35)}
+.door h2{font:800 32px/1.05 Archivo,Inter,sans-serif;letter-spacing:-.02em;margin:0 0 10px}
+.door p{color:var(--ink2);margin:0 0 22px}
+.door .go{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-weight:600}
+.door .go span{color:var(--mute);font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.door .go b{display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:50%;background:var(--c);color:#0b0b10;font-size:20px;transition:transform .2s}
+.door:hover .go b{transform:translateX(4px)}
+.one{padding-block:clamp(48px,7vw,96px)}
+.one .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:clamp(24px,5vw,72px);align-items:center}
+.one h3{font:800 clamp(32px,4.4vw,52px)/1.05 Archivo,Inter,sans-serif;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.fact{padding:20px;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
+.fact b{display:block;font:800 26px/1.1 Archivo,Inter,sans-serif;margin-bottom:4px}
+.fact span{color:var(--ink2);font-size:15px}
+footer{border-top:1px solid var(--line);padding-block:30px 40px;color:var(--mute);font-size:14px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
+@media(max-width:980px){.grid{grid-template-columns:1fr}.door{min-height:0}.door svg.icon{height:96px}.one .wrap{grid-template-columns:1fr}}
+@media(max-width:600px){.bar nav{display:none}.hero{min-height:620px}.hero .wrap{padding-block:110px 90px}.doors{margin-top:-40px}.facts{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.hero .wave,.kick i{animation:none}.door,.btn{transition:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap bar">
+  <a class="logo" href="#top"><img src="brand/bazzy-logo.webp" alt="" width="40" height="40">Bazzy TV</a>
+  <nav aria-label="Bazzy apps"><a data-link="video" href="#">Video</a><a data-link="live" href="#">Live</a><a data-link="box" href="#">BazzyBox</a></nav>
+</div></header>
+
+<main id="top">
+<section class="hero">
+  <div class="wave" role="img" aria-label="Bazzy waveform"></div>
+  <div class="wrap">
+    <div class="kick"><i></i>Made in New Orleans · owned by the people who make it</div>
+    <h1>Bazzy TV</h1>
+    <p class="lede">Watch films, go live and keep your work safe, all on one account. 80% of every credit goes straight to the artist.</p>
+    <div class="cta"><a class="btn solid" data-link="video" href="#">Start watching</a><a class="btn ghost" data-link="box" href="#">Store your work</a></div>
+  </div>
+</section>
+
+<section class="doors" aria-label="Bazzy apps"><div class="wrap grid">
+  <a class="door video" data-link="video" href="#">
+    <span class="status" data-status="video"></span>
+    <svg class="icon" viewBox="0 0 320 120" aria-hidden="true"><defs><linearGradient id="gv" x1="0" x2="1"><stop offset="0" stop-color="#ff8a3d" stop-opacity=".25"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
+      <rect x="8" y="14" width="200" height="92" rx="12" fill="none" stroke="url(#gv)" stroke-width="3"/><path d="M92 40v40l34-20z" fill="#ff8a3d"/>
+      <rect x="222" y="14" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".55"/><rect x="222" y="47" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".35"/><rect x="222" y="80" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".2"/></svg>
+    <h2>Bazzy Video</h2>
+    <p>Indie films, documentaries and New Orleans stories. Rent or buy with credits, and filmmakers keep 80%.</p>
+    <div class="go"><span data-host="video"></span><b>→</b></div>
+  </a>
+  <a class="door live" data-link="live" href="#">
+    <span class="status" data-status="live"></span>
+    <svg class="icon" viewBox="0 0 320 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="16" fill="#ff3d7f"/><circle cx="60" cy="60" r="32" fill="none" stroke="#ff3d7f" stroke-width="3" opacity=".55"/><circle cx="60" cy="60" r="50" fill="none" stroke="#ff3d7f" stroke-width="3" opacity=".25"/>
+      <path d="M130 60h18l10-30 14 60 14-44 10 24 10-10h18l10-22 12 44 10-22h34" fill="none" stroke="#ff3d7f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h2>Bazzy Live</h2>
+    <p>Concerts, second lines and sessions, streamed live in sharp adaptive quality to any screen.</p>
+    <div class="go"><span data-host="live"></span><b>→</b></div>
+  </a>
+  <a class="door box" data-link="box" href="#">
+    <span class="status" data-status="box"></span>
+    <svg class="icon" viewBox="0 0 320 120" aria-hidden="true">
+      <path d="M40 40l60-26 60 26-60 26z" fill="#a77bff" opacity=".85"/><path d="M40 40v52l60 26V66z" fill="#a77bff" opacity=".5"/><path d="M160 40v52l-60 26V66z" fill="#a77bff" opacity=".3"/>
+      <rect x="190" y="26" width="120" height="14" rx="7" fill="#a77bff" opacity=".25"/><rect x="190" y="26" width="84" height="14" rx="7" fill="#a77bff"/>
+      <rect x="190" y="56" width="120" height="10" rx="5" fill="#a77bff" opacity=".2"/><rect x="190" y="78" width="96" height="10" rx="5" fill="#a77bff" opacity=".2"/></svg>
+    <h2>BazzyBox</h2>
+    <p>Storage for filmmakers and musicians: 3 TB for $9.99. You can leave any day and take every file with you.</p>
+    <div class="go"><span data-host="box"></span><b>→</b></div>
+  </a>
+</div></section>
+
+<section class="one"><div class="wrap">
+  <h3>One account. One wallet. Three rooms.</h3>
+  <div class="facts">
+    <div class="fact"><b>One sign-in</b><span>Use email, Apple or Google once and you're in everywhere.</span></div>
+    <div class="fact"><b>80% to artists</b><span>Most of every credit you spend goes to whoever made what you watch.</span></div>
+    <div class="fact"><b>No lock-in</b><span>Change plans any day. Your files are always yours to export.</span></div>
+    <div class="fact"><b>Built by Bassy Bob</b><span>Grammy-winning producer, building this in New Orleans.</span></div>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <span>© 2026 Bazzy Live LLC</span>
+  <nav aria-label="Footer"><a data-link="video" href="#">Bazzy Video</a><a data-link="live" href="#">Bazzy Live</a><a data-link="box" href="#">BazzyBox</a></nav>
+</div></footer>
+
+<script>
+{
+  // Where each app lives. Flip `open` to true when an address is live.
+  const APPS = {
+    video: { url: "https://video.bazzy.tv", open: false },
+    live:  { url: "https://live.bazzy.io",  open: true },
+    box:   { url: "https://box.bazzy.io",   open: true },
+  };
+  for (const [key, app] of Object.entries(APPS)) {
+    for (const a of document.querySelectorAll(`[data-link="${key}"]`)) a.href = app.url;
+    for (const s of document.querySelectorAll(`[data-host="${key}"]`)) s.textContent = new URL(app.url).host;
+    for (const s of document.querySelectorAll(`[data-status="${key}"]`)) {
+      s.textContent = app.open ? "Open" : "Opening soon";
+      s.classList.toggle("on", app.open);
+    }
+  }
+}
+</script>
+</body>
+</html>

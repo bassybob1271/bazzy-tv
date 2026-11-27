@@ -5,6 +5,7 @@ One account, one wallet and one storage layer, shared by all three.
 
 | App | What it is | Folder | Storage bucket | Status |
 |-----|-----------|--------|----------------|--------|
+| **bazzy.tv** | Landing page linking all three apps | [`apps/hub`](apps/hub) | — | Static, ready for Cloudflare Pages |
 | **Bazzy Video** | Co-op streaming site — rent, buy, filmmakers keep 80% | [`apps/video`](apps/video) | `bazzyvideo` | Working: FastAPI + Next.js + Docker, B2 upload → HLS → playback |
 | **Bazzy Live** | Live events and streams | [`apps/live`](apps/live) | `bazzylive` | Running from the `Stowage` repo (`Stowage/apps/live`) — to be imported here |
 | **BazzyBox** | No-lock-in file storage for filmmakers and musicians | [`apps/box`](apps/box) | `bazzybox` | Running from the `Stowage` repo (its root) — to be imported here |
@@ -14,6 +15,7 @@ One account, one wallet and one storage layer, shared by all three.
 ```
 bazzy-tv/
 ├─ apps/
+│  ├─ hub/       bazzy.tv landing page
 │  ├─ video/      Bazzy Video (moved here from the bazzy-video repo, full history kept)
 │  ├─ live/       Bazzy Live (from Stowage/apps/live)
 │  └─ box/        BazzyBox (from the Stowage repo root)
