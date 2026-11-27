@@ -21,6 +21,16 @@ except Exception:
     stripe = None
 
 
+def creator_share(gross_credits: int) -> int:
+    """What a creator gets from a sale: the same for a film rental or a concert ticket.
+    3% processing + 7% delivery come off the top, then the creator keeps 80% of what's left."""
+    # Whole numbers in basis points: float math (1 - 0.03 - 0.07 = 0.8999…) shaved a credit off creators.
+    fees_bp = round((settings.PLATFORM_PROCESSING_FEE_PCT + settings.PLATFORM_DELIVERY_FEE_PCT) * 10_000)
+    share_bp = round(settings.FILMMAKER_SHARE_PCT * 10_000)
+    net = gross_credits * (10_000 - fees_bp) // 10_000
+    return net * share_bp // 10_000
+
+
 class CreditService:
 
     # ── Purchase credits via Stripe Checkout ──────────────────────────────────
@@ -212,9 +222,7 @@ class CreditService:
         if not title or not title.filmmaker_id:
             return
 
-        net_credits = int(gross_credits * (1 - settings.PLATFORM_PROCESSING_FEE_PCT
-                                             - settings.PLATFORM_DELIVERY_FEE_PCT))
-        fm_credits  = int(net_credits * settings.FILMMAKER_SHARE_PCT)
+        fm_credits = creator_share(gross_credits)
 
         earning = FilmmakerEarning(
             id=str(uuid.uuid4()),
@@ -289,6 +297,7 @@ class CreditService:
         return {"moved_credits": moved, "credit_balance": bal, "earnings_left": available - moved}
 
     async def add_earning(self, db: AsyncSession, user_id: str, credits: int) -> str:
+        """`credits` is the creator's share, already split (see creator_share)."""
         """Earnings that come from another Bazzy app (a musician's share of Bazzy Live tickets).
         Gives the member a creator profile if they don't have one; it doesn't change what they can upload."""
         fm = (await db.execute(select(FilmmakerProfile).where(FilmmakerProfile.user_id == user_id))).scalar_one_or_none()

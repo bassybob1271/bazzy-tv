@@ -376,12 +376,13 @@ async def test_musician_paid_from_live_can_spend_earnings():
     async with client() as c:
         for _ in range(2):  # retried by the app: counted once
             r = await c.post(f"/api/v1/apps/wallet/{sub}/earnings", headers={"authorization": BOX_AUTH},
-                             json={"credits": 1600, "ref": "show-42", "note": "Greenhouse BK, 10 tickets"})
-            assert r.status_code == 200
+                             json={"gross_credits": 2000, "ref": "show-42", "note": "Greenhouse BK, 10 tickets"})
+            # Same split as a film: 2,000 − 3% − 7% = 1,800, and 80% of that is 1,440.
+            assert r.status_code == 200 and r.json()["creator_credits"] == 1440
         dash = (await c.get("/api/v1/filmmaker/dashboard", headers=bearer(sub))).json()
-        assert dash["unsettled_credits"] == 1600 and dash["titles"] == []
+        assert dash["unsettled_credits"] == 1440 and dash["titles"] == []
         r = await c.post("/api/v1/filmmaker/earnings-to-wallet", headers=bearer(sub), json={})
-        assert r.json()["credit_balance"] == 1600
+        assert r.json()["credit_balance"] == 1440
         # Earning on Live doesn't grant uploading films on Bazzy TV.
         async with AsyncSessionLocal() as db:
             assert (await db.get(User, sub)).role == UserRole.VIEWER
@@ -391,3 +392,9 @@ async def test_viewers_without_earnings_get_no_creator_tools():
     sub = await member(0, "justwatching@example.com")
     async with client() as c:
         assert (await c.post("/api/v1/filmmaker/earnings-to-wallet", headers=bearer(sub), json={})).status_code == 403
+
+
+def test_musicians_and_filmmakers_get_the_same_split():
+    from app.services.credit_service import creator_share
+    # A 200-credit concert ticket and a 200-credit film rental pay the creator the same.
+    assert creator_share(200) == 144

@@ -12,9 +12,11 @@ the app, so an app can only touch wallets of people who signed in to it with Baz
   POST /api/v1/apps/wallet/{sub}/entries   {"credits": -300, "ref": "...", "note": "..."}
        credits < 0 charges, > 0 credits. `ref` is unique per app: sending it again changes nothing.
        A charge larger than the balance is refused with 402 and nothing changes.
-  POST /api/v1/apps/wallet/{sub}/earnings  {"credits": 160, "ref": "...", "note": "..."}
-       A creator's share of a sale in the app (a musician's cut of Bazzy Live tickets). It goes to their
-       earnings, next to film earnings: payable to their bank, or movable into this wallet to spend.
+  POST /api/v1/apps/wallet/{sub}/earnings  {"gross_credits": 2000, "ref": "...", "note": "..."}
+       A sale in the app that a creator earns from (a Bazzy Live ticket for a musician's show). The app
+       sends the full price; Bazzy TV applies the same split as films (3% + 7% fees, then 80% to the
+       creator) so musicians and filmmakers are always paid alike. The share goes to their earnings:
+       payable to their bank, or movable into this wallet to spend.
 """
 import secrets
 import uuid
@@ -28,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.routes.provider import _basic_auth, _clients
 from app.db.database import get_db
 from app.models.models import AppWalletEntry, CreditTransaction, TransactionType, User
-from app.services.credit_service import CreditService
+from app.services.credit_service import CreditService, creator_share
 
 router = APIRouter(prefix="/apps/wallet", tags=["apps"])
 
@@ -109,7 +111,7 @@ async def entry(sub: str, e: Entry, c: dict = Depends(wallet_client), db: AsyncS
 
 
 class Earning(BaseModel):
-    credits: int = Field(..., gt=0, le=10_000_000)
+    gross_credits: int = Field(..., gt=0, le=10_000_000)
     ref: str = Field(..., min_length=1, max_length=120)
     note: str = Field("", max_length=300)
 
@@ -118,13 +120,14 @@ class Earning(BaseModel):
 async def earning(sub: str, e: Earning, c: dict = Depends(wallet_client), db: AsyncSession = Depends(get_db)):
     await _member(db, sub)
     key = f"{c['client_id']}:earn:{e.ref}"
+    share = creator_share(e.gross_credits)
     if await db.get(AppWalletEntry, key):
-        return {"applied": False}
-    await CreditService().add_earning(db, sub, e.credits)
-    db.add(AppWalletEntry(id=key, client_id=c["client_id"], user_id=sub, credits=e.credits))
+        return {"applied": False, "creator_credits": share}
+    await CreditService().add_earning(db, sub, share)
+    db.add(AppWalletEntry(id=key, client_id=c["client_id"], user_id=sub, credits=share))
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        return {"applied": False}
-    return {"applied": True}
+        return {"applied": False, "creator_credits": share}
+    return {"applied": True, "creator_credits": share}
