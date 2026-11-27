@@ -63,9 +63,12 @@ async def get_filmmaker_user(current_user: User = Depends(get_current_user)) -> 
     return current_user
 
 
-async def get_creator_user(current_user: User = Depends(get_current_user)) -> User:
-    """Anyone who earns on Bazzy: filmmakers, and musicians paid from Bazzy Live, who have an earnings
-    profile without upload rights on Bazzy TV."""
+async def get_creator_user(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> User:
+    """Anyone who earns on Bazzy: filmmakers, musicians paid from Bazzy Live, and anyone on a split sheet
+    (venues, producers…), who have an earnings profile without upload rights on Bazzy TV."""
+    from app.services.splits import claim_held
+    if await claim_held(db, current_user):
+        await db.refresh(current_user, ["filmmaker_profile", "credit_balance"])
     if current_user.role in ("filmmaker", "admin") or current_user.filmmaker_profile:
         return current_user
     raise HTTPException(status_code=403, detail="Creator account required")

@@ -1,7 +1,7 @@
 """Bazzy Video — SQLAlchemy ORM Models"""
 from sqlalchemy import (
     Column, String, Integer, BigInteger, Float, Boolean,
-    DateTime, ForeignKey, Text, Enum, JSON, Index
+    DateTime, ForeignKey, Text, Enum, JSON, Index, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -238,6 +238,56 @@ class AppWalletEntry(Base):
     txn_id     = Column(String(36), ForeignKey("credit_transactions.id"), nullable=True)
     applied    = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SplitSheet(Base):
+    """Who gets paid from a live show or a film, and how much. The band (or filmmaker) owns it and lists
+    every collaborator: the venue, producers, engineers, openers. Each sale's creator share is divided by
+    it. Edits apply to sales after the edit; past sales keep the split they were paid under."""
+    __tablename__ = "split_sheets"
+
+    id         = Column(String(36), primary_key=True, default=gen_uuid)
+    owner_id   = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    name       = Column(String(200), nullable=False)
+    app        = Column(String(32), nullable=False)          # "live" (a show) or "tv" (a film)
+    source_ref = Column(String(120), nullable=False)          # the show id in Bazzy Live, or the title id
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    shares = relationship("SplitShare", back_populates="sheet", cascade="all, delete-orphan", lazy="selectin",
+                          order_by="SplitShare.position")
+
+    __table_args__ = (UniqueConstraint("owner_id", "app", "source_ref", name="uq_split_source"),)
+
+
+class SplitShare(Base):
+    __tablename__ = "split_shares"
+
+    id        = Column(String(36), primary_key=True, default=gen_uuid)
+    sheet_id  = Column(String(36), ForeignKey("split_sheets.id", ondelete="CASCADE"), nullable=False, index=True)
+    position  = Column(Integer, nullable=False, default=0)
+    email     = Column(String(255), nullable=False)
+    name      = Column(String(200))
+    role      = Column(String(60), nullable=False)            # band, venue, producer, engineer, …
+    bp        = Column(Integer, nullable=False)               # basis points: 2500 = 25%
+
+    sheet = relationship("SplitSheet", back_populates="shares")
+
+
+class SplitPayment(Base):
+    """One collaborator's cut of one sale. user_id is empty until someone with that email joins Bazzy;
+    then it's claimed into their earnings."""
+    __tablename__ = "split_payments"
+
+    id         = Column(String(36), primary_key=True, default=gen_uuid)
+    sheet_id   = Column(String(36), ForeignKey("split_sheets.id"), nullable=False, index=True)
+    sale_ref   = Column(String(200), nullable=False)
+    email      = Column(String(255), nullable=False, index=True)
+    role       = Column(String(60), nullable=False)
+    user_id    = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    earning_id = Column(String(36), ForeignKey("filmmaker_earnings.id"), nullable=True)
+    credits    = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class FilmmakerEarning(Base):

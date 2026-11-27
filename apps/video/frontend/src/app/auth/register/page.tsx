@@ -10,7 +10,8 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useStore();
-  const [email, setEmail] = useState("");
+  // Split invites link here with ?email= so the cut held for that address finds its owner.
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [asFilmmaker, setAsFilmmaker] = useState(searchParams.get("role") === "filmmaker");

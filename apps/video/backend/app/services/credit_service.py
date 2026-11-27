@@ -224,6 +224,13 @@ class CreditService:
 
         fm_credits = creator_share(gross_credits)
 
+        from app.services.splits import pay_sale, sheet_for
+        owner_id = (await db.execute(select(FilmmakerProfile.user_id).where(FilmmakerProfile.id == title.filmmaker_id))).scalar_one_or_none()
+        sheet = await sheet_for(db, owner_id, "tv", title_id) if owner_id else None
+        if sheet:
+            await pay_sale(db, sheet, fm_credits, f"tv:{title_id}:{uuid.uuid4()}", title_id=title_id)
+            return
+
         earning = FilmmakerEarning(
             id=str(uuid.uuid4()),
             filmmaker_id=title.filmmaker_id,
@@ -296,8 +303,8 @@ class CreditService:
         bal = (await db.execute(select(User.credit_balance).where(User.id == user.id))).scalar_one()
         return {"moved_credits": moved, "credit_balance": bal, "earnings_left": available - moved}
 
-    async def add_earning(self, db: AsyncSession, user_id: str, credits: int) -> str:
-        """`credits` is the creator's share, already split (see creator_share)."""
+    async def add_earning(self, db: AsyncSession, user_id: str, credits: int, title_id: str | None = None) -> str:
+        """`credits` is the creator's share, already split (see creator_share). Returns the earning id."""
         """Earnings that come from another Bazzy app (a musician's share of Bazzy Live tickets).
         Gives the member a creator profile if they don't have one; it doesn't change what they can upload."""
         fm = (await db.execute(select(FilmmakerProfile).where(FilmmakerProfile.user_id == user_id))).scalar_one_or_none()
@@ -305,11 +312,12 @@ class CreditService:
             fm = FilmmakerProfile(id=str(uuid.uuid4()), user_id=user_id)
             db.add(fm)
             await db.flush()
-        db.add(FilmmakerEarning(id=str(uuid.uuid4()), filmmaker_id=fm.id, credits_earned=credits,
+        earning_id = str(uuid.uuid4())
+        db.add(FilmmakerEarning(id=earning_id, filmmaker_id=fm.id, title_id=title_id, credits_earned=credits,
                                 usd_equivalent=credits / settings.CREDITS_PER_DOLLAR))
         await db.execute(update(FilmmakerProfile).where(FilmmakerProfile.id == fm.id)
                          .values(total_earned_credits=FilmmakerProfile.total_earned_credits + credits))
-        return fm.id
+        return earning_id
 
     # ── Payout (Stripe Connect) ────────────────────────────────────────────────
 

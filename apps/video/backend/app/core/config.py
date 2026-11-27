@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     # OAuth redirect URIs and the post-login redirect, e.g. https://video.bazzy.tv
     PUBLIC_URL: str = "http://localhost:3000"
 
+    # Outgoing mail (verification links, split invites). Google Workspace: smtp.gmail.com:587 with an
+    # app password. Empty SMTP_HOST logs messages instead of sending them.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = "Bazzy TV <hello@bazzy.tv>"
+    EMAIL_VERIFY_TTL_HOURS: int = 72
+
     # Sign in with Google (Google Cloud console → OAuth client ID, type "Web application").
     # Authorized redirect URI: {PUBLIC_URL}/api/v1/auth/oauth/google/callback
     GOOGLE_CLIENT_ID: str = ""

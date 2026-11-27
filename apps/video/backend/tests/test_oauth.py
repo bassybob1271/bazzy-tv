@@ -34,6 +34,9 @@ os.environ.update({
         "client_id": "bazzybox", "client_secret": "box-secret", "name": "BazzyBox",
         "redirect_uris": ["https://box.test/api/auth/bazzy/callback"], "trusted": True, "wallet": True,
     }, {
+        "client_id": "bazzylive", "client_secret": "live-secret", "name": "Bazzy Live",
+        "redirect_uris": ["https://live.test/auth/bazzy/callback"], "trusted": True, "wallet": True,
+    }, {
         "client_id": "nowallet", "client_secret": "nw-secret", "name": "Other",
         "redirect_uris": ["https://other.test/cb"],
     }]),
@@ -398,3 +401,129 @@ def test_musicians_and_filmmakers_get_the_same_split():
     from app.services.credit_service import creator_share
     # A 200-credit concert ticket and a 200-credit film rental pay the creator the same.
     assert creator_share(200) == 144
+
+
+
+# ── Split sheets: pay everyone who worked on the show ──────────────────────────
+
+LIVE_AUTH = "Basic " + base64.b64encode(b"bazzylive:live-secret").decode()
+
+
+async def earnings_of(sub: str) -> int:
+    async with client() as c:
+        r = await c.get("/api/v1/filmmaker/dashboard", headers=bearer(sub))
+        return r.json()["unsettled_credits"] if r.status_code == 200 else 0
+
+
+async def test_live_show_pays_every_collaborator_on_the_split():
+    band = await member(0, "band@example.com")
+    venue = await member(0, "booking@greenhouse.example")
+    producer = await member(0, "producer@example.com")
+    async with client() as c:
+        r = await c.post("/api/v1/splits", headers=bearer(band), json={
+            "name": "Greenhouse BK, Fri Dec 5", "app": "live", "source_ref": "show-dec5",
+            "shares": [
+                {"email": "band@example.com", "role": "band", "percent": 50},
+                {"email": "Booking@Greenhouse.example", "name": "Greenhouse BK", "role": "venue", "percent": 20},
+                {"email": "producer@example.com", "role": "producer", "percent": 20},
+                {"email": "engineer@example.com", "role": "FOH engineer", "percent": 10},
+            ]})
+        assert r.status_code == 201, r.text
+        sheet = r.json()["id"]
+        # Ten 200-credit tickets: 2,000 gross → 1,440 creator share, divided by the sheet.
+        r = await c.post(f"/api/v1/apps/wallet/{band}/earnings", headers={"authorization": LIVE_AUTH},
+                         json={"gross_credits": 2000, "ref": "dec5-batch1", "source_ref": "show-dec5", "note": "10 tickets"})
+        assert [(x["role"], x["credits"], x["held"]) for x in r.json()["split"]] == [
+            ("band", 720, False), ("venue", 288, False), ("producer", 288, False), ("FOH engineer", 144, True)]
+    assert (await earnings_of(band), await earnings_of(venue), await earnings_of(producer)) == (720, 288, 288)
+
+    # The engineer joins later with that email (verified): their held cut is waiting.
+    engineer = await member(0, "engineer@example.com")
+    async with client() as c:
+        mine = (await c.get("/api/v1/splits", headers=bearer(engineer))).json()
+        assert [m["name"] for m in mine] == ["Greenhouse BK, Fri Dec 5"] and mine[0]["owner"] is False
+        st = (await c.get(f"/api/v1/splits/{sheet}/statement", headers=bearer(engineer))).json()
+        assert st["total_credits"] == 1440 and st["sales"] == 1
+        assert {p["email"]: p["held_credits"] for p in st["people"]}["engineer@example.com"] == 0
+    assert await earnings_of(engineer) == 144
+
+
+async def test_split_rules():
+    band = await member(0, "rules-band@example.com")
+    async with client() as c:
+        def sheet(*shares, ref="show-rules"):
+            return c.post("/api/v1/splits", headers=bearer(band), json={"name": "Rules", "app": "live", "source_ref": ref, "shares": list(shares)})
+        assert (await sheet({"email": "a@x.example", "role": "band", "percent": 60}, {"email": "b@x.example", "role": "venue", "percent": 39})).status_code == 400
+        assert (await sheet({"email": "a@x.example", "role": "band", "percent": 50}, {"email": "A@x.example", "role": "venue", "percent": 50})).status_code == 400
+        assert (await sheet({"email": "a@x.example", "role": "band", "percent": 33.333}, {"email": "b@x.example", "role": "venue", "percent": 66.667})).status_code == 400
+        ok = await sheet({"email": "rules-band@example.com", "role": "band", "percent": 33.34},
+                         {"email": "b@x.example", "role": "venue", "percent": 33.33}, {"email": "c@x.example", "role": "producer", "percent": 33.33})
+        assert ok.status_code == 201
+        assert (await sheet({"email": "a@x.example", "role": "band", "percent": 100})).status_code == 409  # one split per show
+        # Rounding leftovers go to the first line, so the cuts always add up to the sale.
+        r = await c.post(f"/api/v1/apps/wallet/{band}/earnings", headers={"authorization": LIVE_AUTH},
+                         json={"gross_credits": 139, "ref": "rules-1", "source_ref": "show-rules"})
+        share = r.json()["creator_credits"]
+        assert [x["credits"] for x in r.json()["split"]] == [share - 2 * (share * 3333 // 10000), share * 3333 // 10000, share * 3333 // 10000]
+        # Only the owner edits; people not on it can't see it; a split that has paid can't be deleted.
+        sid = ok.json()["id"]
+        venue = await member(0, "b@x.example")
+        stranger = await member(0, "stranger@example.com")
+        assert (await c.put(f"/api/v1/splits/{sid}", headers=bearer(venue), json={"name": "Mine now"})).status_code == 403
+        assert (await c.get(f"/api/v1/splits/{sid}/statement", headers=bearer(stranger))).status_code == 404
+        assert (await c.delete(f"/api/v1/splits/{sid}", headers=bearer(band))).status_code == 409
+        # Edits apply to later sales.
+        r = await c.put(f"/api/v1/splits/{sid}", headers=bearer(band), json={"shares": [
+            {"email": "rules-band@example.com", "role": "band", "percent": 90}, {"email": "b@x.example", "role": "venue", "percent": 10}]})
+        assert r.status_code == 200 and [x["percent"] for x in r.json()["shares"]] == [90, 10]
+
+
+async def test_film_split_needs_a_film_you_own():
+    band = await member(0, "nofilm@example.com")
+    async with client() as c:
+        r = await c.post("/api/v1/splits", headers=bearer(band), json={"name": "Not mine", "app": "tv", "source_ref": "some-title",
+                                                                       "shares": [{"email": "nofilm@example.com", "role": "director", "percent": 100}]})
+        assert r.status_code == 403
+
+
+async def test_a_show_without_a_split_pays_the_band():
+    band = await member(0, "solo@example.com")
+    async with client() as c:
+        r = await c.post(f"/api/v1/apps/wallet/{band}/earnings", headers={"authorization": LIVE_AUTH},
+                         json={"gross_credits": 200, "ref": "solo-1", "source_ref": "show-solo"})
+        assert r.json()["split"] is None
+    assert await earnings_of(band) == 144
+
+
+async def test_invite_signup_confirm_and_get_paid():
+    from app.services import mailer
+    mailer.OUTBOX.clear()
+    band = await member(0, "growth-band@example.com")
+    async with client() as c:
+        sheet = (await c.post("/api/v1/splits", headers=bearer(band), json={
+            "name": "Greenhouse BK, Sat Dec 6", "app": "live", "source_ref": "show-dec6",
+            "shares": [{"email": "growth-band@example.com", "role": "band", "percent": 75},
+                       {"email": "newbie@example.com", "role": "lighting", "percent": 25}]})).json()
+        # The non-member is invited with a join link carrying their email.
+        invite = [m for m in mailer.OUTBOX if m["To"] == "newbie@example.com"]
+        assert len(invite) == 1 and "Claim your cut" in invite[0].get_body(("html",)).get_content()
+        assert "register?email=newbie%40example.com" in invite[0].get_body(("plain",)).get_content()
+        await c.post(f"/api/v1/apps/wallet/{band}/earnings", headers={"authorization": LIVE_AUTH},
+                     json={"gross_credits": 1000, "ref": "dec6-1", "source_ref": "show-dec6"})  # share 720 → 540 / 180
+        st = (await c.get(f"/api/v1/splits/{sheet['id']}/statement", headers=bearer(band))).json()
+        newbie_line = {p["email"]: p for p in st["people"]}["newbie@example.com"]
+        assert newbie_line["held_credits"] == 180 and "register?email=" in newbie_line["join_url"]
+
+        # Signs up with email + password: unconfirmed, so nothing is released yet.
+        r = await c.post("/api/v1/auth/register", json={"email": "newbie@example.com", "password": "longpassword1", "display_name": "Newbie"})
+        token = r.json()["access_token"]
+        assert (await c.get("/api/v1/filmmaker/dashboard", headers={"authorization": f"Bearer {token}"})).status_code == 403
+        # Taps the link in the confirmation email: confirmed, and the held cut lands.
+        mail = [m for m in mailer.OUTBOX if m["To"] == "newbie@example.com" and "Confirm" in m["Subject"]][-1]
+        link = mail.get_body(("plain",)).get_content().split("/auth/verify?token=")[1].split()[0]
+        r = await c.post("/api/v1/auth/verify-email", json={"token": link})
+        assert r.json() == {"verified": True, "claimed_credits": 180}
+        dash = (await c.get("/api/v1/filmmaker/dashboard", headers={"authorization": f"Bearer {token}"})).json()
+        assert dash["unsettled_credits"] == 180
+        # The link can't be used as a sign-in.
+        assert (await c.get("/api/v1/filmmaker/dashboard", headers={"authorization": f"Bearer {link}"})).status_code == 401

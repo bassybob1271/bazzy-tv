@@ -15,14 +15,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail ?? "API error");
+    const d = error.detail;
+    throw new Error(typeof d === "string" ? d : d?.error ?? "API error");
   }
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const api = {
   auth: {
+    verifyEmail: (token: string) => request<{ verified: boolean; claimed_credits: number }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+    resendVerification: () => request<{ sent: boolean }>("/auth/verify-email/resend", { method: "POST" }),
     register: (data: { email: string; password: string; display_name: string; is_filmmaker?: boolean; bio?: string }) =>
       request<{ access_token: string; user_id: string; role: string }>("/auth/register", {
         method: "POST", body: JSON.stringify(data),
@@ -90,6 +94,13 @@ export const api = {
   },
 
   // ── Filmmaker ─────────────────────────────────────────────────────────────
+  splits: {
+    list: () => request<SplitSheet[]>("/splits"),
+    create: (s: SplitSheetIn) => request<SplitSheet>("/splits", { method: "POST", body: JSON.stringify(s) }),
+    update: (id: string, s: Partial<SplitSheetIn>) => request<SplitSheet>(`/splits/${id}`, { method: "PUT", body: JSON.stringify(s) }),
+    remove: (id: string) => request<void>(`/splits/${id}`, { method: "DELETE" }),
+    statement: (id: string) => request<SplitStatement>(`/splits/${id}/statement`),
+  },
   filmmaker: {
     dashboard: () => request<FilmmakerDashboard>("/filmmaker/dashboard"),
     analytics: (titleId: string) => request<TitleAnalytics>(`/filmmaker/analytics/${titleId}`),
@@ -144,3 +155,12 @@ export interface TitleAnalytics { title_id: string; title_name: string; view_cou
 export interface PayoutResult { payout_id: string; amount_usd: number; stripe_transfer_id: string; }
 export interface Payout { id: string; amount_usd: number; status: string; created_at: string; paid_at?: string; }
 export interface PlatformMetrics { total_users: number; live_titles: number; total_transactions: number; total_credits_sold: number; total_filmmaker_paid_usd: number; }
+
+export interface SplitShareRow { email: string; name?: string | null; role: string; percent: number }
+export interface SplitSheetIn { name: string; app: "live" | "tv"; source_ref: string; shares: SplitShareRow[] }
+export interface SplitSheet extends SplitSheetIn { id: string; owner: boolean; updated_at: string | null }
+export interface SplitStatement {
+  sheet: SplitSheet; total_credits: number; sales: number;
+  people: { email: string; role: string; credits: number; held_credits: number; join_url: string | null }[];
+  recent: { sale_ref: string; email: string; role: string; credits: number; held: boolean; at: string | null }[];
+}

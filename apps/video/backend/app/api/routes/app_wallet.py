@@ -17,6 +17,8 @@ the app, so an app can only touch wallets of people who signed in to it with Baz
        sends the full price; Bazzy TV applies the same split as films (3% + 7% fees, then 80% to the
        creator) so musicians and filmmakers are always paid alike. The share goes to their earnings:
        payable to their bank, or movable into this wallet to spend.
+       Add "source_ref": the show's id, and if the band has a split sheet for that show the share is
+       divided across everyone on it (venue, producers, engineers…) instead of going to the band alone.
 """
 import secrets
 import uuid
@@ -31,6 +33,10 @@ from app.api.routes.provider import _basic_auth, _clients
 from app.db.database import get_db
 from app.models.models import AppWalletEntry, CreditTransaction, TransactionType, User
 from app.services.credit_service import CreditService, creator_share
+from app.services.splits import pay_sale, sheet_for
+
+# Split sheets name the app they belong to by a short name, not the OAuth client id.
+APP_OF = {"bazzylive": "live", "bazzybox": "box"}
 
 router = APIRouter(prefix="/apps/wallet", tags=["apps"])
 
@@ -112,6 +118,7 @@ async def entry(sub: str, e: Entry, c: dict = Depends(wallet_client), db: AsyncS
 
 class Earning(BaseModel):
     gross_credits: int = Field(..., gt=0, le=10_000_000)
+    source_ref: str | None = Field(None, max_length=120)
     ref: str = Field(..., min_length=1, max_length=120)
     note: str = Field("", max_length=300)
 
@@ -123,11 +130,16 @@ async def earning(sub: str, e: Earning, c: dict = Depends(wallet_client), db: As
     share = creator_share(e.gross_credits)
     if await db.get(AppWalletEntry, key):
         return {"applied": False, "creator_credits": share}
-    await CreditService().add_earning(db, sub, share)
+    sheet = await sheet_for(db, sub, APP_OF.get(c["client_id"], c["client_id"]), e.source_ref) if e.source_ref else None
+    split = None
+    if sheet:
+        split = await pay_sale(db, sheet, share, key)
+    else:
+        await CreditService().add_earning(db, sub, share)
     db.add(AppWalletEntry(id=key, client_id=c["client_id"], user_id=sub, credits=share))
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
         return {"applied": False, "creator_credits": share}
-    return {"applied": True, "creator_credits": share}
+    return {"applied": True, "creator_credits": share, "split": split}

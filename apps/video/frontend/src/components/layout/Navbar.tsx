@@ -138,6 +138,10 @@ export function Navbar() {
               </Link>
             )}
 
+            <Link href="/splits" className="hidden md:block text-xs px-2.5 py-1 rounded border border-white/15 text-[#A0A8C0] hover:text-white hover:border-white/30 transition-colors">
+              Splits
+            </Link>
+
             {/* Add credits */}
             <Link
               href="/wallet"
