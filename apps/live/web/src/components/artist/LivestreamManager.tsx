@@ -108,10 +108,19 @@ function AtemSetup({ show, onChange }: { show: MyLivestream; onChange: () => voi
   );
 }
 
+/** Local date and time pieces ("2026-12-04", "20:00") for the inputs, from a Date. */
+const pad = (n: number) => String(n).padStart(2, "0");
+const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const localTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
 function ScheduleForm({ onDone }: { onDone: () => void }) {
+  // Separate date and time fields: every browser handles these, unlike datetime-local
+  // (Safari and DuckDuckGo make its time part hard to set).
+  const soon = new Date(Date.now() + 60 * 60 * 1000);
+  soon.setMinutes(0, 0, 0);
   const [form, setForm] = useState({
-    title: "", performer_name: "", venue: "", synopsis: "",
-    category: "concerts", starts_at: "", rent_credits: 200, poster_url: "",
+    title: "", performer_name: "", venue: "Greenhouse BK", synopsis: "",
+    category: "concerts", date: localDate(soon), time: localTime(soon), rent_credits: 200, poster_url: "",
   });
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
@@ -120,9 +129,12 @@ function ScheduleForm({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     setSaving(true);
     try {
+      const { date, time, ...rest } = form;
+      const start = new Date(`${date}T${time || "00:00"}`); // local time on this computer
+      if (isNaN(start.getTime())) throw new Error("Pick a start date and time");
       await api.live.schedule({
-        ...form,
-        starts_at: new Date(form.starts_at).toISOString(),
+        ...rest,
+        starts_at: start.toISOString(),
         poster_url: form.poster_url || undefined,
       });
       onDone();
@@ -138,7 +150,14 @@ function ScheduleForm({ onDone }: { onDone: () => void }) {
     <form onSubmit={submit} className="p-6 rounded-xl bg-[#12151E] border border-white/8 grid gap-4 md:grid-cols-2 mb-6">
       <input className={input} placeholder="Show title" required value={form.title} onChange={(e) => set("title", e.target.value)} />
       <input className={input} placeholder="Performing artist(s)" value={form.performer_name} onChange={(e) => set("performer_name", e.target.value)} />
-      <input className={input} type="datetime-local" required value={form.starts_at} onChange={(e) => set("starts_at", e.target.value)} aria-label="Start time" />
+      <div className="flex gap-2 items-center">
+        <input className={input} type="date" required value={form.date} onChange={(e) => set("date", e.target.value)} aria-label="Start date" />
+        <input className={`${input} w-32`} type="time" step={300} required value={form.time} onChange={(e) => set("time", e.target.value)} aria-label="Start time" />
+        <button type="button" onClick={() => { const n = new Date(); set("date", localDate(n)); set("time", localTime(n)); }}
+          className="shrink-0 px-3 py-2 rounded-lg border border-white/15 text-xs text-[#A0A8C0] hover:text-white hover:border-white/30">
+          Start now
+        </button>
+      </div>
       <select className={input} value={form.category} onChange={(e) => set("category", e.target.value)} aria-label="Category">
         {CATEGORIES.map((c) => <option key={c.slug} value={c.slug}>{c.emoji} {c.label}</option>)}
       </select>
