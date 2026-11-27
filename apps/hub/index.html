@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bazzy TV</title>
-<meta name="description" content="Bazzy TV — the creator-owned home for Bazzy Video, Bazzy Live and BazzyBox. One account, one wallet, built in New Orleans.">
+<meta name="description" content="Bazzy TV — the creator-owned home for Bazzy Video, Bazzy Live and BazzyBox. One account, one wallet. Brooklyn.">
 <meta property="og:title" content="Bazzy TV">
 <meta property="og:description" content="Watch, go live and store your work — one account across Bazzy Video, Bazzy Live and BazzyBox.">
 <meta property="og:image" content="brand/hero-wave.webp">
@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* VOICE: confident, nocturnal, creator-first — a front door, not a pitch deck.
-   IDEA: a club marquee at night: the waveform is the house sound, three lit doors lead to three rooms.
+   IDEA: a Brooklyn club marquee at night: the waveform is the house sound, three lit doors lead to three rooms.
    PICTURE: the Bazzy waveform running edge to edge behind the title, with three tall door-cards beneath it.
    COLOUR and TYPE: black stage, Bazzy crimson #850B1E brand mark, door accents from the waveform (orange, magenta, violet); Archivo for display, Inter for text.
    LAYOUT: logo bar, full-bleed hero (title over the wave), three equal doors in one row that stack on phones, a short "one account" band, footer. */
@@ -70,11 +70,20 @@ h1{font:900 clamp(52px,9vw,118px)/.92 Archivo,Inter,sans-serif;letter-spacing:-.
 .fact{padding:20px;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
 .fact b{display:block;font:800 26px/1.1 Archivo,Inter,sans-serif;margin-bottom:4px}
 .fact span{color:var(--ink2);font-size:15px}
+.fam{padding-block:0 clamp(48px,7vw,96px)}
+.fam h3{font:800 clamp(26px,3vw,36px)/1.1 Archivo,Inter,sans-serif;letter-spacing:-.02em;margin:0 0 20px}
+.famgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.fam-card{display:flex;flex-direction:column;gap:8px;padding:28px;border-radius:20px;background:linear-gradient(135deg,rgba(133,11,30,.28),var(--panel) 60%);border:1px solid rgba(255,255,255,.1);transition:transform .2s,border-color .2s}
+.fam-card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.28)}
+.fam-card .tagline{font-size:13px;font-weight:600;color:var(--ink2)}
+.fam-card b{font:800 30px/1.05 Archivo,Inter,sans-serif;letter-spacing:-.02em}
+.fam-card .desc{color:var(--ink2)}
+.fam-card .handle{margin-top:6px;font-weight:600}
 footer{border-top:1px solid var(--line);padding-block:30px 40px;color:var(--mute);font-size:14px}
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
 footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
 @media(max-width:980px){.grid{grid-template-columns:1fr}.door{min-height:0}.door svg.icon{height:96px}.one .wrap{grid-template-columns:1fr}}
-@media(max-width:600px){.bar nav{display:none}.hero{min-height:620px}.hero .wrap{padding-block:110px 90px}.doors{margin-top:-40px}.facts{grid-template-columns:1fr}}
+@media(max-width:600px){.famgrid{grid-template-columns:1fr}.bar nav{display:none}.hero{min-height:620px}.hero .wrap{padding-block:110px 90px}.doors{margin-top:-40px}.facts{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.hero .wave,.kick i{animation:none}.door,.btn{transition:none}}
 </style>
 </head>
@@ -88,7 +97,7 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
 <section class="hero">
   <div class="wave" role="img" aria-label="Bazzy waveform"></div>
   <div class="wrap">
-    <div class="kick"><i></i>Made in New Orleans · owned by the people who make it</div>
+    <div class="kick"><i></i>Brooklyn, NY · owned by the people who make it</div>
     <h1>Bazzy TV</h1>
     <p class="lede">Watch films, go live and keep your work safe, all on one account. 80% of every credit goes straight to the artist.</p>
     <div class="cta"><a class="btn solid" data-link="video" href="#">Start watching</a><a class="btn ghost" data-link="box" href="#">Store your work</a></div>
@@ -102,7 +111,7 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
       <rect x="8" y="14" width="200" height="92" rx="12" fill="none" stroke="url(#gv)" stroke-width="3"/><path d="M92 40v40l34-20z" fill="#ff8a3d"/>
       <rect x="222" y="14" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".55"/><rect x="222" y="47" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".35"/><rect x="222" y="80" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".2"/></svg>
     <h2>Bazzy Video</h2>
-    <p>Indie films, documentaries and New Orleans stories. Rent or buy with credits, and filmmakers keep 80%.</p>
+    <p>Indie films, documentaries and music films. Rent or buy with credits, and filmmakers keep 80%.</p>
     <div class="go"><span data-host="video"></span><b>→</b></div>
   </a>
   <a class="door live" data-link="live" href="#">
@@ -111,7 +120,7 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
       <circle cx="60" cy="60" r="16" fill="#ff3d7f"/><circle cx="60" cy="60" r="32" fill="none" stroke="#ff3d7f" stroke-width="3" opacity=".55"/><circle cx="60" cy="60" r="50" fill="none" stroke="#ff3d7f" stroke-width="3" opacity=".25"/>
       <path d="M130 60h18l10-30 14 60 14-44 10 24 10-10h18l10-22 12 44 10-22h34" fill="none" stroke="#ff3d7f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <h2>Bazzy Live</h2>
-    <p>Concerts, second lines and sessions, streamed live in sharp adaptive quality to any screen.</p>
+    <p>Concerts and sessions from Greenhouse BK in Brooklyn, streamed live in sharp adaptive quality to any screen.</p>
     <div class="go"><span data-host="live"></span><b>→</b></div>
   </a>
   <a class="door box" data-link="box" href="#">
@@ -132,7 +141,25 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
     <div class="fact"><b>One sign-in</b><span>Use email, Apple or Google once and you're in everywhere.</span></div>
     <div class="fact"><b>80% to artists</b><span>Most of every credit you spend goes to whoever made what you watch.</span></div>
     <div class="fact"><b>No lock-in</b><span>Change plans any day. Your files are always yours to export.</span></div>
-    <div class="fact"><b>Built by Bassy Bob</b><span>Grammy-winning producer, building this in New Orleans.</span></div>
+    <div class="fact"><b>Built by Bassy Bob</b><span>Grammy-winning producer, building this in Brooklyn.</span></div>
+  </div>
+</div></section>
+
+<section class="fam" aria-labelledby="fam-h"><div class="wrap">
+  <h3 id="fam-h">The Bazzy TV family</h3>
+  <div class="famgrid">
+    <a class="fam-card" href="https://www.instagram.com/greenhouse.bk/" rel="noopener">
+      <span class="tagline">Live venue · Brooklyn</span>
+      <b>Greenhouse BK</b>
+      <span class="desc">The room where the concerts happen. Shows at Greenhouse stream on Bazzy Live.</span>
+      <span class="handle">@greenhouse.bk ↗</span>
+    </a>
+    <a class="fam-card" href="https://losdepressos.com" rel="noopener">
+      <span class="tagline">Post-production house</span>
+      <b>LDStudios</b>
+      <span class="desc">The post-production house behind the creative work on Bazzy TV.</span>
+      <span class="handle">losdepressos.com ↗</span>
+    </a>
   </div>
 </div></section>
 </main>
