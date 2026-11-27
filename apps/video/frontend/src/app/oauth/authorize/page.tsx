@@ -43,7 +43,9 @@ function Authorize() {
   // 2. Not signed in to Bazzy TV yet: sign in, then come straight back here.
   useEffect(() => {
     if (!hydrated || !app || isAuthenticated) return;
-    router.replace(`/auth/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    // screen=signup (sent by BazzyBox's "Create account") opens the sign-up page; both pages return here after.
+    const screen = new URLSearchParams(window.location.search).get("screen") === "signup" ? "register" : "login";
+    router.replace(`/auth/${screen}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   }, [hydrated, app, isAuthenticated, router]);
 
   async function approve() {
