@@ -37,12 +37,18 @@ fi
 SECRET=$(grep -E '^MEDIAMTX_HOOK_SECRET=' "$ENVF" | head -1 | cut -d= -f2- | tr -d ' "')
 [ -n "$SECRET" ] || { echo "✗ MEDIAMTX_HOOK_SECRET is empty in $ENVF"; exit 1; }
 
+# Hooks with the API address, secret and log path written in (MediaMTX doesn't pass our env to hooks).
+for h in on_ready on_notready; do
+  sed -e "s#@API@#http://127.0.0.1:8000#" -e "s#@SECRET@#$SECRET#" -e "s#@LOG@#$LOG#" "$HERE/$h.sh" > "$BIN/$h.sh"
+  chmod 700 "$BIN/$h.sh"
+done
+
 # Same settings as the Docker config, with this Mac's paths and the API on localhost.
 # (macOS sed can't insert lines, so the auth address goes first; paths are quoted for the space in "Bazzy TV")
 printf 'authHTTPAddress: http://127.0.0.1:8000/api/v1/live/ingest/auth?secret=%s\n' "$SECRET" > "$BIN/mediamtx.yml"
 sed -e "s#recordPath: /recordings/#recordPath: \"$ROOT/recordings/#; /recordPath:/s#\$#\"#" \
-    -e "s#sh /hooks/on_ready.sh#sh '$HERE/on_ready.sh'#" \
-    -e "s#sh /hooks/on_notready.sh#sh '$HERE/on_notready.sh'#" \
+    -e "s#sh /hooks/on_ready.sh#sh '$BIN/on_ready.sh'#" \
+    -e "s#sh /hooks/on_notready.sh#sh '$BIN/on_notready.sh'#" \
     "$HERE/../mediamtx.yml" >> "$BIN/mediamtx.yml"
 
 stop
