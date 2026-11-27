@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import engine, Base
 from app.seed import seed_demo_catalog
+from app.seed_live import seed_live_shows
 from app.api.routes import auth, titles, wallet, filmmaker, admin, social, provider, stream, app_wallet, splits, live
 import structlog, os
 
@@ -56,6 +57,7 @@ async def lifespan(app: FastAPI):
             """))
         await conn.run_sync(Base.metadata.create_all)
     await seed_demo_catalog()
+    await seed_live_shows()
     logger.info("bazzy_video.startup", version=settings.APP_VERSION)
     yield
     await engine.dispose()
