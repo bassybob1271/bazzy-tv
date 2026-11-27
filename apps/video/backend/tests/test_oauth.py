@@ -651,3 +651,23 @@ async def test_google_sign_in_started_on_live_returns_to_live():
         r = await c.get("/api/v1/auth/oauth/google/callback", params={"code": "good-code", "state": q["state"][0]})
     assert r.status_code == 303 and r.headers["location"].startswith("https://live.test/auth/callback#")
     assert fragment(r.headers["location"])["next"] == "/shows"
+
+
+
+async def test_on_air_show_leads_the_slider_even_behind_many_upcoming():
+    band = await member(0, "slider-band@example.com")
+    soon = datetime.now(timezone.utc) + timedelta(hours=1)
+    ids = []
+    async with client() as c:
+        for i in range(8):
+            r = await c.post("/api/v1/live/", headers=bearer(band), json={"title": f"Upcoming {i}", "starts_at": (soon + timedelta(days=i)).isoformat()})
+            ids.append(r.json()["title_id"])
+        late = await c.post("/api/v1/live/", headers=bearer(band), json={"title": "Late but live", "starts_at": (soon + timedelta(days=30)).isoformat()})
+        late_id = late.json()["title_id"]
+        for t in ids + [late_id]:
+            await approve(t)
+        async with AsyncSessionLocal() as db:
+            (await db.get(Title, late_id)).live_state = LiveState.ON_AIR
+            await db.commit()
+        upcoming = (await c.get("/api/v1/live/home-rails")).json()["upcoming"]
+    assert upcoming[0]["id"] == late_id and upcoming[0]["live_state"] == "on_air"

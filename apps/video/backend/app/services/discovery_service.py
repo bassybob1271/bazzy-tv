@@ -7,7 +7,7 @@ Signal weights:
   10% social referral conversion
 """
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc
+from sqlalchemy import select, func, and_, or_, desc, case
 from app.models.models import Title, ContentCategory, ContentStatus, FanVote, LiveState
 from app.core.config import settings
 from typing import Optional, List
@@ -69,7 +69,9 @@ class DiscoveryService:
             select(Title)
             .where(Title.status == ContentStatus.LIVE,
                    Title.live_state.in_([LiveState.ON_AIR, LiveState.SCHEDULED]))
-            .order_by(Title.live_state, Title.starts_at)   # ON_AIR sorts before SCHEDULED
+            # On-air shows first, then soonest. Explicit, because Postgres sorts enums by declaration
+            # order (SCHEDULED before ON_AIR) while SQLite sorts them as text.
+            .order_by(case((Title.live_state == LiveState.ON_AIR, 0), else_=1), Title.starts_at)
             .limit(limit)
         )
         return result.scalars().all()
