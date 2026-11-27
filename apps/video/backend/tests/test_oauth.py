@@ -326,3 +326,68 @@ async def test_wallet_needs_a_wallet_app_with_its_secret():
         other = "Basic " + base64.b64encode(b"nowallet:nw-secret").decode()
         assert (await c.get(f"/api/v1/apps/wallet/{sub}", headers={"authorization": other})).status_code == 403
         assert (await c.get(f"/api/v1/apps/wallet/{sub}")).status_code == 401
+
+
+# ── Creators spend what they earn ──────────────────────────────────────────────
+
+from app.core.security import create_access_token  # noqa: E402
+from app.models.models import FilmmakerEarning, FilmmakerProfile, UserRole  # noqa: E402
+
+
+def bearer(sub: str) -> dict:
+    return {"authorization": f"Bearer {create_access_token({'sub': sub})}"}
+
+
+async def filmmaker_with_earnings(email: str, *amounts: int) -> tuple[str, str]:
+    async with AsyncSessionLocal() as db:
+        u = User(email=email, hashed_password=hash_password("x" * 12), role=UserRole.FILMMAKER, credit_balance=0, is_verified=True)
+        db.add(u)
+        await db.flush()
+        fm = FilmmakerProfile(user_id=u.id, total_earned_credits=sum(amounts))
+        db.add(fm)
+        await db.flush()
+        for a in amounts:
+            db.add(FilmmakerEarning(filmmaker_id=fm.id, credits_earned=a, usd_equivalent=a / 100))
+        await db.commit()
+        return u.id, fm.id
+
+
+async def test_filmmaker_moves_part_then_all_earnings_into_the_wallet():
+    sub, fm_id = await filmmaker_with_earnings("maker@example.com", 600, 900)
+    async with client() as c:
+        dash = (await c.get("/api/v1/filmmaker/dashboard", headers=bearer(sub))).json()
+        assert dash["unsettled_credits"] == 1500 and dash["wallet_credits"] == 0
+        r = await c.post("/api/v1/filmmaker/earnings-to-wallet", headers=bearer(sub), json={"credits": 1000})
+        assert r.status_code == 200 and r.json() == {"moved_credits": 1000, "credit_balance": 1000, "earnings_left": 500}
+        # What's left is still payable to the bank, and only that.
+        dash = (await c.get("/api/v1/filmmaker/dashboard", headers=bearer(sub))).json()
+        assert dash["unsettled_credits"] == 500 and dash["wallet_credits"] == 1000
+        assert (await c.post("/api/v1/filmmaker/earnings-to-wallet", headers=bearer(sub), json={"credits": 501})).status_code == 400
+        r = await c.post("/api/v1/filmmaker/earnings-to-wallet", headers=bearer(sub), json={})
+        assert r.json() == {"moved_credits": 500, "credit_balance": 1500, "earnings_left": 0}
+        # Earned credits pay for BazzyBox storage through the shared wallet.
+        r = await c.post(f"/api/v1/apps/wallet/{sub}/entries", headers={"authorization": BOX_AUTH},
+                         json={"credits": -999, "ref": "maker-flex", "note": "BazzyBox Flex, 30 days"})
+        assert r.json()["credits"] == 501
+
+
+async def test_musician_paid_from_live_can_spend_earnings():
+    sub = await member(0, "musician@example.com")
+    async with client() as c:
+        for _ in range(2):  # retried by the app: counted once
+            r = await c.post(f"/api/v1/apps/wallet/{sub}/earnings", headers={"authorization": BOX_AUTH},
+                             json={"credits": 1600, "ref": "show-42", "note": "Greenhouse BK, 10 tickets"})
+            assert r.status_code == 200
+        dash = (await c.get("/api/v1/filmmaker/dashboard", headers=bearer(sub))).json()
+        assert dash["unsettled_credits"] == 1600 and dash["titles"] == []
+        r = await c.post("/api/v1/filmmaker/earnings-to-wallet", headers=bearer(sub), json={})
+        assert r.json()["credit_balance"] == 1600
+        # Earning on Live doesn't grant uploading films on Bazzy TV.
+        async with AsyncSessionLocal() as db:
+            assert (await db.get(User, sub)).role == UserRole.VIEWER
+
+
+async def test_viewers_without_earnings_get_no_creator_tools():
+    sub = await member(0, "justwatching@example.com")
+    async with client() as c:
+        assert (await c.post("/api/v1/filmmaker/earnings-to-wallet", headers=bearer(sub), json={})).status_code == 403

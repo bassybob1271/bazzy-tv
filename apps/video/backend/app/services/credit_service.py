@@ -231,6 +231,77 @@ class CreditService:
             .values(total_earned_credits=FilmmakerProfile.total_earned_credits + fm_credits)
         )
 
+    # ── Earnings → wallet ──────────────────────────────────────────────────────
+    #
+    # Filmmakers and musicians can spend what they earn without cashing out first: moved earnings land
+    # in their Bazzy wallet, the one balance that rents films, buys Bazzy Live tickets and pays for
+    # BazzyBox storage. Moving is one-way: moved credits are no longer part of a bank payout.
+
+    async def unsettled_earnings(self, db: AsyncSession, filmmaker_id: str) -> int:
+        from sqlalchemy import func as sqlfunc
+        r = await db.execute(select(sqlfunc.coalesce(sqlfunc.sum(FilmmakerEarning.credits_earned), 0))
+                             .where(FilmmakerEarning.filmmaker_id == filmmaker_id, FilmmakerEarning.settled == False))  # noqa: E712
+        return int(r.scalar() or 0)
+
+    async def earnings_to_wallet(self, db: AsyncSession, user: User, filmmaker_id: str, credits: int | None = None) -> dict:
+        rows = (await db.execute(
+            select(FilmmakerEarning)
+            .where(FilmmakerEarning.filmmaker_id == filmmaker_id, FilmmakerEarning.settled == False)  # noqa: E712
+            .order_by(FilmmakerEarning.created_at, FilmmakerEarning.id)
+        )).scalars().all()
+        available = sum(r.credits_earned for r in rows)
+        amount = available if credits is None else credits
+        if amount <= 0 or amount > available:
+            raise HTTPException(400, f"You have {available:,} earned credits to move.")
+
+        moved, left = 0, amount
+        for r in rows:
+            if left <= 0:
+                break
+            take = min(left, r.credits_earned)
+            if take < r.credits_earned:
+                # Split: the rest stays payable as its own row.
+                db.add(FilmmakerEarning(
+                    id=str(uuid.uuid4()), filmmaker_id=r.filmmaker_id, title_id=r.title_id,
+                    source_txn_id=r.source_txn_id, credits_earned=r.credits_earned - take,
+                    usd_equivalent=(r.credits_earned - take) / settings.CREDITS_PER_DOLLAR, settled=False,
+                ))
+            # Settle only if nobody else (a payout, another move) got there first.
+            res = await db.execute(
+                update(FilmmakerEarning)
+                .where(FilmmakerEarning.id == r.id, FilmmakerEarning.settled == False)  # noqa: E712
+                .values(settled=True, credits_earned=take, usd_equivalent=take / settings.CREDITS_PER_DOLLAR)
+            )
+            if res.rowcount != 1:
+                await db.rollback()
+                raise HTTPException(409, "Your earnings changed while moving them. Try again.")
+            moved += take
+            left -= take
+
+        await db.execute(update(User).where(User.id == user.id).values(credit_balance=User.credit_balance + moved))
+        db.add(CreditTransaction(
+            id=str(uuid.uuid4()), user_id=user.id, transaction_type=TransactionType.FILMMAKER_CREDIT,
+            credits_delta=moved, usd_equivalent=moved / settings.CREDITS_PER_DOLLAR,
+            description=f"Moved {moved:,} earned credits to your wallet",
+        ))
+        await db.commit()
+        bal = (await db.execute(select(User.credit_balance).where(User.id == user.id))).scalar_one()
+        return {"moved_credits": moved, "credit_balance": bal, "earnings_left": available - moved}
+
+    async def add_earning(self, db: AsyncSession, user_id: str, credits: int) -> str:
+        """Earnings that come from another Bazzy app (a musician's share of Bazzy Live tickets).
+        Gives the member a creator profile if they don't have one; it doesn't change what they can upload."""
+        fm = (await db.execute(select(FilmmakerProfile).where(FilmmakerProfile.user_id == user_id))).scalar_one_or_none()
+        if not fm:
+            fm = FilmmakerProfile(id=str(uuid.uuid4()), user_id=user_id)
+            db.add(fm)
+            await db.flush()
+        db.add(FilmmakerEarning(id=str(uuid.uuid4()), filmmaker_id=fm.id, credits_earned=credits,
+                                usd_equivalent=credits / settings.CREDITS_PER_DOLLAR))
+        await db.execute(update(FilmmakerProfile).where(FilmmakerProfile.id == fm.id)
+                         .values(total_earned_credits=FilmmakerProfile.total_earned_credits + credits))
+        return fm.id
+
     # ── Payout (Stripe Connect) ────────────────────────────────────────────────
 
     async def trigger_payout(self, db: AsyncSession, filmmaker_id: str) -> dict:

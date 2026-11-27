@@ -8,7 +8,7 @@ from app.db.database import get_db
 from app.models.models import (
     User, FilmmakerProfile, Title, FilmmakerEarning, Payout, ContentStatus
 )
-from app.core.security import get_filmmaker_user
+from app.core.security import get_creator_user, get_filmmaker_user
 from app.services.credit_service import CreditService
 import stripe
 from app.core.config import settings
@@ -20,7 +20,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @router.get("/dashboard")
 async def dashboard(
-    current_user: User = Depends(get_filmmaker_user),
+    current_user: User = Depends(get_creator_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Main filmmaker dashboard — earnings, titles, analytics."""
@@ -53,6 +53,7 @@ async def dashboard(
         "unsettled_credits": unsettled_credits or 0,
         "unsettled_usd": round(unsettled_usd or 0, 2),
         "payout_ready": (unsettled_usd or 0) >= settings.MIN_PAYOUT_USD,
+        "wallet_credits": current_user.credit_balance,
         "titles": [
             {
                 "id": t.id, "title": t.title, "status": t.status,
@@ -106,7 +107,7 @@ async def title_analytics(
 @router.post("/connect-stripe")
 async def connect_stripe(
     code: str,
-    current_user: User = Depends(get_filmmaker_user),
+    current_user: User = Depends(get_creator_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Exchange Stripe Connect OAuth code for account ID."""
@@ -125,7 +126,7 @@ async def connect_stripe(
 
 @router.post("/request-payout")
 async def request_payout(
-    current_user: User = Depends(get_filmmaker_user),
+    current_user: User = Depends(get_creator_user),
     db: AsyncSession = Depends(get_db),
 ):
     fm = current_user.filmmaker_profile
@@ -137,7 +138,7 @@ async def request_payout(
 
 @router.get("/payout-history")
 async def payout_history(
-    current_user: User = Depends(get_filmmaker_user),
+    current_user: User = Depends(get_creator_user),
     db: AsyncSession = Depends(get_db),
 ):
     fm = current_user.filmmaker_profile
@@ -148,3 +149,21 @@ async def payout_history(
         .limit(50)
     )
     return result.scalars().all()
+
+
+class EarningsToWallet(BaseModel):
+    credits: Optional[int] = None   # omit to move everything earned so far
+
+
+@router.post("/earnings-to-wallet")
+async def earnings_to_wallet(
+    req: EarningsToWallet,
+    current_user: User = Depends(get_creator_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Spend what you earn: move earned credits into your Bazzy wallet, the one balance for films,
+    Bazzy Live tickets and BazzyBox storage. Moved credits are no longer part of a bank payout."""
+    fm = current_user.filmmaker_profile
+    if not fm:
+        raise HTTPException(404, "No earnings yet")
+    return await credits_svc.earnings_to_wallet(db, current_user, fm.id, req.credits)

@@ -63,6 +63,14 @@ async def get_filmmaker_user(current_user: User = Depends(get_current_user)) -> 
     return current_user
 
 
+async def get_creator_user(current_user: User = Depends(get_current_user)) -> User:
+    """Anyone who earns on Bazzy: filmmakers, and musicians paid from Bazzy Live, who have an earnings
+    profile without upload rights on Bazzy TV."""
+    if current_user.role in ("filmmaker", "admin") or current_user.filmmaker_profile:
+        return current_user
+    raise HTTPException(status_code=403, detail="Creator account required")
+
+
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")

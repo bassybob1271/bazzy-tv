@@ -95,6 +95,8 @@ export const api = {
     analytics: (titleId: string) => request<TitleAnalytics>(`/filmmaker/analytics/${titleId}`),
     requestPayout: () => request<PayoutResult>("/filmmaker/request-payout", { method: "POST" }),
     payoutHistory: () => request<Payout[]>("/filmmaker/payout-history"),
+    earningsToWallet: (credits?: number) =>
+      request<{ moved_credits: number; credit_balance: number; earnings_left: number }>("/filmmaker/earnings-to-wallet", { method: "POST", body: JSON.stringify(credits ? { credits } : {}) }),
     connectStripe: (code: string) =>
       request<{ stripe_connected: boolean }>(`/filmmaker/connect-stripe?code=${code}`, { method: "POST" }),
   },
@@ -137,7 +139,7 @@ export interface DiscoverParams { mood?: string; category?: string; min_runtime?
 export interface WalletInfo { credit_balance: number; lifetime_credits: number; usd_equivalent: number; }
 export interface CreditTier { usd: number; credits: number; bonus: number; }
 export interface Transaction { id: string; transaction_type: string; credits_delta: number; usd_equivalent?: number; description?: string; created_at: string; }
-export interface FilmmakerDashboard { filmmaker_id: string; display_name: string; stripe_connected: boolean; kyc_verified: boolean; total_earned_credits: number; total_paid_out_usd: number; unsettled_credits: number; unsettled_usd: number; payout_ready: boolean; titles: any[]; }
+export interface FilmmakerDashboard { filmmaker_id: string; display_name: string; stripe_connected: boolean; kyc_verified: boolean; total_earned_credits: number; total_paid_out_usd: number; unsettled_credits: number; unsettled_usd: number; payout_ready: boolean; wallet_credits?: number; titles: any[]; }
 export interface TitleAnalytics { title_id: string; title_name: string; view_count: number; completion_rate: number; fan_vote_score: number; revenue_velocity_7d: number; total_earned_credits: number; total_earned_usd: number; }
 export interface PayoutResult { payout_id: string; amount_usd: number; stripe_transfer_id: string; }
 export interface Payout { id: string; amount_usd: number; status: string; created_at: string; paid_at?: string; }

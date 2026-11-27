@@ -20,13 +20,14 @@ export default function FilmmakerPage() {
   const [dash, setDash] = useState<FilmmakerDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestingPayout, setRequestingPayout] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const [payouts, setPayouts] = useState<Payout[]>([]);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated) { router.push("/auth/login"); return; }
-    if (role === "viewer") { router.push("/"); return; }
+
     async function load() {
       try {
         // Returning from Stripe Connect OAuth with ?code=
@@ -38,12 +39,28 @@ export default function FilmmakerPage() {
         const [d, p] = await Promise.all([api.filmmaker.dashboard(), api.filmmaker.payoutHistory()]);
         setDash(d);
         setPayouts(p);
+      } catch {
+        router.push("/"); // no filmmaker or musician earnings on this account
       } finally {
         setLoading(false);
       }
     }
     load();
   }, [hydrated, isAuthenticated, role]);
+
+  async function handleMoveToWallet() {
+    if (!dash || dash.unsettled_credits <= 0) return;
+    if (!confirm(`Move ${dash.unsettled_credits.toLocaleString()} earned credits into your Bazzy wallet? You can spend them on films, Bazzy Live and BazzyBox. Moved credits can't be withdrawn to your bank.`)) return;
+    setMoving(true);
+    try {
+      await api.filmmaker.earningsToWallet();
+      setDash(await api.filmmaker.dashboard());
+    } catch (e: any) {
+      alert(e.message ?? "Couldn't move your earnings");
+    } finally {
+      setMoving(false);
+    }
+  }
 
   async function handlePayout() {
     setRequestingPayout(true);
@@ -113,6 +130,27 @@ export default function FilmmakerPage() {
         <StatCard label="Pending Payout" value={`$${dash.unsettled_usd.toFixed(2)}`} sub="Min $25 to withdraw" color={payoutReady ? "#F5C842" : "#5A607A"} />
         <StatCard label="Titles" value={String(dash.titles.length)} sub={`${liveCount} live`} />
         <StatCard label="Total Views" value={totalViews.toLocaleString()} sub="All time" color="#4F8EF7" />
+      </div>
+
+      {/* Spend earnings: one wallet for films, Live and Box */}
+      <div className="mb-4 p-6 rounded-xl bg-[#1A1D2E] border border-[#4F8EF7]/25">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-bold mb-1">Spend your earnings</h2>
+            <p className="text-sm text-[#A0A8C0]">
+              Move earned credits into your Bazzy wallet to rent and buy films, get into Bazzy Live concerts and pay for BazzyBox storage.
+              {typeof dash.wallet_credits === "number" && ` Wallet: ${dash.wallet_credits.toLocaleString()} credits.`}
+            </p>
+          </div>
+          <button
+            onClick={handleMoveToWallet}
+            disabled={dash.unsettled_credits <= 0 || moving}
+            className={`flex-shrink-0 px-6 py-2.5 rounded-full font-bold text-sm transition-all
+              ${dash.unsettled_credits > 0 ? "bg-[#4F8EF7] text-white hover:bg-[#6AA0FF]" : "bg-white/10 text-[#5A607A] cursor-not-allowed"}`}
+          >
+            {moving ? "Moving…" : `Move ${dash.unsettled_credits.toLocaleString()} credits →`}
+          </button>
+        </div>
       </div>
 
       {/* Payout action */}
