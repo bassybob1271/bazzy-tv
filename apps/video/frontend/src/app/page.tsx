@@ -94,7 +94,7 @@ export default function HomePage() {
         <div className="max-w-2xl">
           <h2 className="text-2xl font-black mb-3">80% goes to filmmakers. Always.</h2>
           <p className="text-[#A0A8C0] mb-6">
-            Bazzy Video is a cooperative platform. Every credit you spend flows directly to the people who made what you're watching.
+            Bazzy TV is a cooperative platform. Every credit you spend flows directly to the people who made what you're watching.
             No ads. No algorithms built to addict. Just great cinema.
           </p>
           <div className="flex flex-wrap gap-4">

@@ -56,7 +56,7 @@ export default function WalletPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 fade-up">
       <h1 className="text-3xl font-black mb-2">Wallet</h1>
-      <p className="text-[#A0A8C0] mb-10">Credits power your Bazzy Video experience. 1 cr streams ~1 min of content.</p>
+      <p className="text-[#A0A8C0] mb-10">Credits power your Bazzy TV experience. 1 cr streams ~1 min of content.</p>
 
       {/* Balance card */}
       {wallet && (

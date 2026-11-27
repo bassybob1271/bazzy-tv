@@ -41,7 +41,7 @@ function RegisterForm() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-[#0A0C14]">
       <div className="w-full max-w-md fade-up">
         <Link href="/" className="flex items-center justify-center gap-2 mb-10">
-          <span className="text-3xl font-black text-white">BAZZY<span className="text-[#4F8EF7]">VIDEO</span></span>
+          <span className="text-3xl font-black text-white">BAZZY<span className="text-[#4F8EF7]">TV</span></span>
         </Link>
 
         <div className="bg-[#12151E] border border-white/8 rounded-2xl p-8">

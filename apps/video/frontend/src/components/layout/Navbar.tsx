@@ -16,8 +16,8 @@ const NAV_LINKS = [
 
 // The other two Bazzy sites, shown in every header (set at build time; empty hides a link).
 const SISTER_SITES = [
-  { href: process.env.NEXT_PUBLIC_BAZZY_LIVE_URL ?? "https://live.bazzy.io", label: "Live", hint: "Watch live shows", live: true },
-  { href: process.env.NEXT_PUBLIC_BAZZYBOX_URL ?? "https://box.bazzy.io", label: "BazzyBox", hint: "Storage for creators", live: false },
+  { href: process.env.NEXT_PUBLIC_BAZZY_LIVE_URL ?? "https://live.bazzy.tv", label: "Live", hint: "Watch live shows", live: true },
+  { href: process.env.NEXT_PUBLIC_BAZZYBOX_URL ?? "https://box.bazzy.tv", label: "BazzyBox", hint: "Storage for creators", live: false },
 ].filter((s) => s.href);
 
 export function Navbar() {
@@ -63,7 +63,7 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 flex-shrink-0">
           <span className="text-2xl font-black tracking-tight text-white">
-            BAZZY<span className="text-[#4F8EF7]">VIDEO</span>
+            BAZZY<span className="text-[#4F8EF7]">TV</span>
           </span>
         </Link>
 

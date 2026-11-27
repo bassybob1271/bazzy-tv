@@ -64,7 +64,7 @@ if [ ! -f .env ]; then
       -e 's#^\(CLOUDFLARE_[A-Z_]*\)=your-.*#\1=#' \
       -e "s#^NEXT_PUBLIC_STRIPE_PK=.*#NEXT_PUBLIC_STRIPE_PK=#" \
       .env.example > .env
-  set_var .env OAUTH_CLIENTS "[{\"client_id\":\"bazzybox\",\"client_secret\":\"$BOX_SECRET\",\"name\":\"BazzyBox\",\"redirect_uris\":[\"https://box.bazzy.io/api/auth/bazzy/callback\"],\"trusted\":true},{\"client_id\":\"bazzylive\",\"client_secret\":\"$LIVE_SECRET\",\"name\":\"Bazzy Live\",\"redirect_uris\":[\"https://live.bazzy.io/auth/bazzy/callback\"],\"trusted\":true}]"
+  set_var .env OAUTH_CLIENTS "[{\"client_id\":\"bazzybox\",\"client_secret\":\"$BOX_SECRET\",\"name\":\"BazzyBox\",\"redirect_uris\":[\"https://box.bazzy.tv/api/auth/bazzy/callback\",\"https://box.bazzy.io/api/auth/bazzy/callback\"],\"trusted\":true},{\"client_id\":\"bazzylive\",\"client_secret\":\"$LIVE_SECRET\",\"name\":\"Bazzy Live\",\"redirect_uris\":[\"https://live.bazzy.tv/auth/bazzy/callback\",\"https://live.bazzy.io/auth/bazzy/callback\"],\"trusted\":true}]"
   chmod 600 .env
   # Same secrets on the BazzyBox / Bazzy Live side → "Sign in with Bazzy TV" works everywhere.
   set_var "$BOX_DIR/.env" BAZZY_AUTH_URL "https://$HOST"

@@ -6,7 +6,7 @@ from typing import List, Optional
 
 class Settings(BaseSettings):
     # App
-    APP_NAME: str = "Bazzy Video"
+    APP_NAME: str = "Bazzy TV"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     SECRET_KEY: str = "change-me-in-production"
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
 
     # Apps that may "Sign in with Bazzy TV" (OAuth 2.0 authorization code + PKCE), as JSON:
     # [{"client_id":"bazzybox","client_secret":"…","name":"BazzyBox",
-    #   "redirect_uris":["https://box.bazzy.io/api/auth/bazzy/callback"],"trusted":true}]
+    #   "redirect_uris":["https://box.bazzy.tv/api/auth/bazzy/callback"],"trusted":true}]
     # trusted = first-party app: skip the consent screen.
     OAUTH_CLIENTS: List[dict] = []
     OAUTH_CODE_TTL_SECONDS: int = 300

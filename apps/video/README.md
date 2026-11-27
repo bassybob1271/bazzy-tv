@@ -136,7 +136,7 @@ Accounts are matched in this order:
 | App's server swaps the code (single use, 5 minutes) | `POST /api/v1/oauth/token` (client secret via Basic auth or form) |
 | App reads the user | `GET /api/v1/oauth/userinfo` → `sub`, `email`, `email_verified`, `name`, `picture` |
 
-Register both apps (`bazzybox` → `https://box.bazzy.io/api/auth/bazzy/callback`, `bazzylive` → `https://live.bazzy.io/auth/bazzy/callback`; see `.env.example`). Redirect URIs must match exactly.
+Register both apps (`bazzybox` → `https://box.bazzy.tv/api/auth/bazzy/callback`, `bazzylive` → `https://live.bazzy.tv/auth/bazzy/callback`; see `.env.example`). Redirect URIs must match exactly.
 
 **Bazzy sites.** The header links to Bazzy Live and BazzyBox. Change the addresses with `NEXT_PUBLIC_BAZZY_LIVE_URL` and `NEXT_PUBLIC_BAZZYBOX_URL` (build time; empty hides a link). Tokens issued to apps carry `typ=oauth_access` and the app's `aud`, so they can't be used as a Bazzy TV session.
 

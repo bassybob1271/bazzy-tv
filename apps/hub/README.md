@@ -26,7 +26,7 @@ the landing page.
 bazzy_member=<video|live|box>; Domain=.bazzy.tv; Path=/; Max-Age=31536000; SameSite=Lax; Secure
 ```
 
-Set it on sign-in, clear it (`Max-Age=0`) on sign-out. It holds no account data. Bazzy Video does this already
-(`apps/video/frontend/src/store/useStore.ts`). **It only works for apps on `*.bazzy.tv`** — a browser won't let
-box.bazzy.io or live.bazzy.io set a bazzy.tv cookie — so Live and Box join once they move to live.bazzy.tv and
-box.bazzy.tv. An app that isn't open yet (see `BAZZY_APPS` in `index.html`) never triggers the redirect.
+Set it on sign-in, clear it (`Max-Age=0`) on sign-out. It holds no account data. Bazzy TV (the film site) does this already
+(`apps/video/frontend/src/store/useStore.ts`). **It only works for apps on `*.bazzy.tv`**, which is why all three live there:
+video.bazzy.tv (films), live.bazzy.tv and box.bazzy.tv. The old box.bazzy.io / live.bazzy.io addresses should
+301-redirect to their bazzy.tv versions once the bazzy.tv zone sits in the same Cloudflare account as the tunnel. An app that isn't open yet (see `BAZZY_APPS` in `index.html`) never triggers the redirect.

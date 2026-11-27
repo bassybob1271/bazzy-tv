@@ -39,7 +39,7 @@ function LoginForm() {
       <div className="w-full max-w-md fade-up">
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-10">
-          <span className="text-3xl font-black text-white">BAZZY<span className="text-[#4F8EF7]">VIDEO</span></span>
+          <span className="text-3xl font-black text-white">BAZZY<span className="text-[#4F8EF7]">TV</span></span>
         </Link>
 
         <div className="bg-[#12151E] border border-white/8 rounded-2xl p-8">
@@ -89,7 +89,7 @@ function LoginForm() {
 
           <p className="text-sm text-center text-[#5A607A] mt-6">
             Don't have an account?{" "}
-            <Link href={redirect !== "/" ? `/auth/register?redirect=${encodeURIComponent(redirect)}` : "/auth/register"} className="text-[#4F8EF7] hover:underline">Join Bazzy Video</Link>
+            <Link href={redirect !== "/" ? `/auth/register?redirect=${encodeURIComponent(redirect)}` : "/auth/register"} className="text-[#4F8EF7] hover:underline">Join Bazzy TV</Link>
           </p>
         </div>
 

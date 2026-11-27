@@ -5,11 +5,11 @@ import { Navbar } from "@/components/layout/Navbar";
 export const viewport: Viewport = { themeColor: "#0A0C14" };
 
 export const metadata: Metadata = {
-  title: "Bazzy Video — Cinema for the Community",
+  title: "Bazzy TV — Cinema for the Community",
   description:
     "Stream documentaries, romance, crime, horror, and new releases. $10 = 1,000 credits. 80% goes to filmmakers.",
   openGraph: {
-    title: "Bazzy Video",
+    title: "Bazzy TV",
     description: "Cinema for the Community. Powered by co-op credits.",
     type: "website",
   },
@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="pt-16">{children}</main>
         <footer className="mt-20 border-t border-white/5 px-6 py-10 text-center text-xs text-[#5A607A]">
           <p className="mb-2">
-            <span className="text-white font-semibold">BAZZY VIDEO</span> — a co-op platform where 80% of every credit goes to the filmmaker.
+            <span className="text-white font-semibold">BAZZY TV</span> — a co-op platform where 80% of every credit goes to the filmmaker.
           </p>
           <p>© {new Date().getFullYear()} Bazzy Live LLC. All rights reserved.</p>
           <div className="flex items-center justify-center gap-6 mt-4">
