@@ -160,7 +160,11 @@ services:
   # Bazzy Live: its own site on the same API, database and wallet,
   # plus MediaMTX, which takes the ATEM's RTMP feed and serves HLS.
   # ─────────────────────────────────────────────
+  # On a Mac, run ingest natively instead: bash ../live/mediamtx/native/start.sh
+  # (Docker Desktop can refuse connections from an ATEM on a cable). For Docker ingest on Linux:
+  #   MEDIAMTX_INTERNAL_URL=http://mediamtx:8888 docker compose --profile docker-ingest up -d
   mediamtx:
+    profiles: ["docker-ingest"]
     image: bluenviron/mediamtx:1.9.3-ffmpeg   # -ffmpeg variant has wget for the hooks
     restart: unless-stopped
     environment:
@@ -183,7 +187,8 @@ services:
       args:
         NEXT_PUBLIC_API_URL: /api/v1   # same-origin; Next proxies to the shared api
         API_INTERNAL_URL: http://api:8000
-        MEDIAMTX_INTERNAL_URL: http://mediamtx:8888   # /hls/* is proxied here
+        # /hls/* is proxied here: MediaMTX running natively on the Mac by default
+        MEDIAMTX_INTERNAL_URL: ${MEDIAMTX_INTERNAL_URL:-http://host.docker.internal:8888}
         NEXT_PUBLIC_STRIPE_PK: ${STRIPE_PUBLISHABLE_KEY}
         NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID: ${STRIPE_CONNECT_CLIENT_ID}
         NEXT_PUBLIC_BAZZY_TV_URL: ${PUBLIC_URL:-http://localhost:3000}
@@ -191,6 +196,8 @@ services:
     env_file: .env
     ports:
       - "3001:3000"   # 3000 is Bazzy TV's
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on: [api]
 
   # The bazzy.tv landing page (static), for the Cloudflare tunnel

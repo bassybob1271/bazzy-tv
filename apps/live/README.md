@@ -37,3 +37,18 @@ returns to `live.bazzy.tv/auth/callback`.
 
 The older Node streaming engine is still in `bassybob1271/Stowage` under `apps/live`; MediaMTX replaced
 it for ingest here. `scripts/import-stowage.sh` can still bring its history in if it's needed.
+
+## Ingest on a Mac: run MediaMTX natively
+
+Docker Desktop on macOS can refuse connections from devices on a cable, such as an ATEM plugged into
+the Mac, even though everything works from the Mac itself. So on a Mac, MediaMTX runs outside Docker:
+
+```bash
+bash apps/live/mediamtx/native/start.sh        # download once, start in the background
+bash apps/live/mediamtx/native/start.sh stop
+```
+
+It uses the same settings, checks every publish/read with the API on localhost:8000, keeps recordings in
+`Bazzy TV/recordings/`, and logs to `Bazzy TV/ingest.log`. The Live site reaches it at
+`host.docker.internal:8888`. The silent on-air preview needs `brew install ffmpeg`; shows stream without it.
+Docker ingest is still there for Linux servers: `--profile docker-ingest`.
