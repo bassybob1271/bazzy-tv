@@ -603,6 +603,11 @@ async def test_a_concert_from_scheduling_to_split_payouts():
         assert pb["live_state"] == "on_air" and pb["hls_url"].endswith(f"/live/{pid}/index.m3u8")
         assert (await auth({"action": "read", "path": f"live/{pid}", "query": f"jwt={pb['token']}"})).status_code == 200
         assert (await auth({"action": "read", "path": f"live/{pid}", "query": "jwt=nope"})).status_code == 401
+        # A viewer coming through the Live site's /hls proxy looks like loopback: still needs a pass.
+        assert (await auth({"action": "read", "path": f"live/{pid}", "ip": "127.0.0.1", "protocol": "hls"})).status_code == 401
+        assert (await auth({"action": "read", "path": f"live/{pid}", "ip": "127.0.0.1", "protocol": "hls", "query": f"jwt={pb['token']}"})).status_code == 200
+        # The preview encoder (RTMP from loopback) may still read the show.
+        assert (await auth({"action": "read", "path": f"live/{pid}", "ip": "127.0.0.1", "protocol": "rtmp"})).status_code == 200
         assert (await c.get(f"/api/v1/live/{show}/playback", headers=bearer(late))).status_code == 402
         # The pass can't be used to sign in.
         assert (await c.get("/api/v1/wallet/", headers={"authorization": f"Bearer {pb['token']}"})).status_code == 401

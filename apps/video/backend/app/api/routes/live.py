@@ -348,7 +348,10 @@ async def mediamtx_auth(request: Request, db: AsyncSession = Depends(get_db)):
     if not pid:
         raise HTTPException(401, "Unknown path")
     query = parse_qs(body.get("query") or "")
-    from_mediamtx = body.get("ip") in LOOPBACK
+    # Only MediaMTX's own ffmpeg (the preview encoder) gets the loopback pass, and it speaks RTMP.
+    # Viewers' HLS requests can also arrive from loopback (the Live site proxies /hls, and a native
+    # MediaMTX on a Mac sees Docker's requests as 127.0.0.1), so they always need a ticket pass.
+    from_mediamtx = body.get("ip") in LOOPBACK and body.get("protocol", "rtmp") == "rtmp"
 
     t = (await db.execute(select(Title).where(Title.playback_id == pid))).scalar_one_or_none()
     if not t or t.status != ContentStatus.LIVE or t.live_state == LiveState.ENDED:
