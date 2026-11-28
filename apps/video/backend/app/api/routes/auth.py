@@ -11,7 +11,9 @@ from app.core.config import settings
 from app.services import mailer
 from datetime import timedelta
 from jose import JWTError, jwt
+import hashlib
 import html
+import time
 import uuid
 
 VERIFY_TYP = "verify_email"
@@ -112,5 +114,73 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = 
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
+    token = create_access_token({"sub": user.id, "role": user.role})
+    return TokenResponse(access_token=token, user_id=user.id, role=user.role)
+
+
+# ── Forgot password ─────────────────────────────────────────────────────────
+RESET_TYP = "password_reset"
+RESET_TTL = timedelta(hours=1)
+_last_reset_mail: dict[str, float] = {}
+
+
+def _pw_mark(user: User) -> str:
+    """Changes whenever the password does, so a reset link works once and dies with the old password."""
+    return hashlib.sha256((user.hashed_password or "").encode()).hexdigest()[:16]
+
+
+class ForgotRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetRequest(BaseModel):
+    token: str
+    password: str
+
+
+@router.post("/password/forgot", status_code=202)
+async def forgot_password(req: ForgotRequest, db: AsyncSession = Depends(get_db)):
+    """Emails a reset link valid for an hour. Always answers the same way, so it can't be used
+    to find out who has an account."""
+    email = req.email.lower()
+    now = time.time()
+    if now - _last_reset_mail.get(email, 0) >= 60:  # one email a minute per address
+        _last_reset_mail[email] = now
+        if len(_last_reset_mail) > 10_000:
+            _last_reset_mail.clear()
+        user = (await db.execute(select(User).where(User.email.ilike(email), User.is_active == True))).scalar_one_or_none()
+        if user:
+            token = create_access_token({"sub": user.id, "typ": RESET_TYP, "pw": _pw_mark(user)}, RESET_TTL)
+            url = f"{settings.PUBLIC_URL.rstrip('/')}/auth/reset?token={token}"
+            await mailer.send(
+                user.email, "Reset your Bazzy TV password",
+                f"Someone asked to reset the password for your Bazzy TV account. Set a new one here (the link works for an hour): {url}\n\n"
+                "If that wasn't you, ignore this email: your password stays the same.",
+                mailer.button_html(
+                    "Reset your password",
+                    "Someone asked to reset the password for your Bazzy account (films, Bazzy Live and BazzyBox). The link works for an hour. If that wasn't you, ignore this email: nothing changes.",
+                    "Set a new password", html.escape(url)),
+            )
+    return {"sent": True}
+
+
+@router.post("/password/reset", response_model=TokenResponse)
+async def reset_password(req: ResetRequest, db: AsyncSession = Depends(get_db)):
+    """The link from the reset email. Sets the new password and signs the member in."""
+    bad = HTTPException(400, "This reset link is invalid, already used or expired. Ask for a new one.")
+    try:
+        claims = jwt.decode(req.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        raise bad
+    if claims.get("typ") != RESET_TYP:
+        raise bad
+    user = await db.get(User, claims.get("sub"))
+    if not user or not user.is_active or claims.get("pw") != _pw_mark(user):
+        raise bad
+    if len(req.password) < 10:
+        raise HTTPException(400, "Use at least 10 characters. A few words work well.")
+    user.hashed_password = hash_password(req.password)
+    user.is_verified = True  # they just proved they read this inbox
+    await db.commit()
     token = create_access_token({"sub": user.id, "role": user.role})
     return TokenResponse(access_token=token, user_id=user.id, role=user.role)

@@ -27,6 +27,9 @@ export const api = {
   auth: {
     verifyEmail: (token: string) => request<{ verified: boolean; claimed_credits: number }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
     resendVerification: () => request<{ sent: boolean }>("/auth/verify-email/resend", { method: "POST" }),
+    forgotPassword: (email: string) => request<{ sent: boolean }>("/auth/password/forgot", { method: "POST", body: JSON.stringify({ email }) }),
+    resetPassword: (token: string, password: string) =>
+      request<{ access_token: string; user_id: string; role: string }>("/auth/password/reset", { method: "POST", body: JSON.stringify({ token, password }) }),
     register: (data: { email: string; password: string; display_name: string; is_filmmaker?: boolean; bio?: string }) =>
       request<{ access_token: string; user_id: string; role: string }>("/auth/register", {
         method: "POST", body: JSON.stringify(data),

@@ -671,3 +671,31 @@ async def test_on_air_show_leads_the_slider_even_behind_many_upcoming():
             await db.commit()
         upcoming = (await c.get("/api/v1/live/home-rails")).json()["upcoming"]
     assert upcoming[0]["id"] == late_id and upcoming[0]["live_state"] == "on_air"
+
+
+async def test_forgot_password_resets_once_and_signs_in():
+    from app.services import mailer
+    mailer.OUTBOX.clear()
+    async with client() as c:
+        await c.post("/api/v1/auth/register", json={"email": "forgetful@example.com", "password": "old password here", "display_name": "Forgetful"})
+        # Same answer for an address with no account, and nothing is sent to it.
+        assert (await c.post("/api/v1/auth/password/forgot", json={"email": "nobody@example.com"})).json() == {"sent": True}
+        r = await c.post("/api/v1/auth/password/forgot", json={"email": "Forgetful@Example.com"})
+        assert r.status_code == 202
+        mails = [m for m in mailer.OUTBOX if "Reset" in m["Subject"]]
+        assert [m["To"] for m in mails] == ["forgetful@example.com"]
+        link = mails[0].get_body(("plain",)).get_content().split("/auth/reset?token=")[1].split()[0]
+        # Asking again right away doesn't send another email.
+        await c.post("/api/v1/auth/password/forgot", json={"email": "forgetful@example.com"})
+        assert len([m for m in mailer.OUTBOX if "Reset" in m["Subject"]]) == 1
+        # The link isn't a sign-in, and short passwords are refused.
+        assert (await c.get("/api/v1/filmmaker/dashboard", headers={"authorization": f"Bearer {link}"})).status_code == 401
+        assert (await c.post("/api/v1/auth/password/reset", json={"token": link, "password": "short"})).status_code == 400
+        r = await c.post("/api/v1/auth/password/reset", json={"token": link, "password": "bayou brass night"})
+        assert r.status_code == 200 and r.json()["access_token"]
+        # Works once: the old password is gone and so is the link.
+        assert (await c.post("/api/v1/auth/password/reset", json={"token": link, "password": "another one again"})).status_code == 400
+        bad = await c.post("/api/v1/auth/token", data={"username": "forgetful@example.com", "password": "old password here"})
+        assert bad.status_code == 401
+        ok = await c.post("/api/v1/auth/token", data={"username": "forgetful@example.com", "password": "bayou brass night"})
+        assert ok.status_code == 200

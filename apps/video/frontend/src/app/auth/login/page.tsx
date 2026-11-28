@@ -67,7 +67,10 @@ function LoginForm() {
               />
             </div>
             <div>
-              <label className="block text-xs text-[#5A607A] uppercase tracking-wider mb-1.5">Password</label>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <label className="block text-xs text-[#5A607A] uppercase tracking-wider">Password</label>
+                <Link href={`/auth/forgot${email ? `?email=${encodeURIComponent(email)}` : ""}`} className="text-xs text-[#4F8EF7] hover:underline">Forgot password?</Link>
+              </div>
               <input
                 type="password"
                 value={password}
