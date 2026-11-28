@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bazzy TV</title>
-<meta name="description" content="Bazzy TV — the creator-owned home for films, Bazzy Live and BazzyBox. One account, one wallet. Brooklyn.">
+<meta name="description" content="Bazzy TV: films, live shows and storage for your work, on one account and one wallet. No subscriptions. Fill your wallet with credits and go. Brooklyn, NY.">
 <meta property="og:title" content="Bazzy TV">
-<meta property="og:description" content="Watch, go live and store your work — one account across Bazzy TV, Bazzy Live and BazzyBox.">
+<meta property="og:description" content="Watch films, catch live shows and store your work: three apps, one account, one wallet. No subscriptions.">
 <meta property="og:image" content="brand/hero-wave.webp">
 <meta name="theme-color" content="#07070a">
 <link rel="icon" href="brand/favicon.png">
@@ -76,6 +76,8 @@ h1{font:900 clamp(52px,9vw,118px)/.92 Archivo,Inter,sans-serif;letter-spacing:-.
 .door svg.icon{width:74%;height:120px;margin-bottom:22px}
 .status{position:absolute;top:22px;right:22px;font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(0,0,0,.45);border:1px solid var(--line);color:var(--ink2)}
 .status.on{color:#7dffb0;border-color:rgba(125,255,176,.35)}
+.door .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c);margin-bottom:6px}
+.one .sub{margin:14px 0 0;font-size:clamp(17px,2vw,20px);color:var(--ink2)}
 .door h2{font:800 32px/1.05 Archivo,Inter,sans-serif;letter-spacing:-.02em;margin:0 0 10px}
 .door p{color:var(--ink2);margin:0 0 22px}
 .door .go{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-weight:600}
@@ -118,8 +120,8 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
   <div class="wrap">
       <div class="kick"><i></i>Brooklyn, NY · owned by the people who make it</div>
       <h1>Bazzy TV</h1>
-      <p class="lede">Watch films, go live and keep your work safe, all on one account. 80% of every credit goes straight to the artist.</p>
-      <div class="cta"><a class="btn solid" data-link="video" href="#">Start watching</a><a class="btn ghost" data-link="box" href="#">Store your work</a></div>
+      <p class="lede">Three apps, one account. Watch independent films, catch live shows from Brooklyn, and keep your work safe in BazzyBox. No subscriptions: fill your wallet with credits and go. 80% of what you spend goes to the artist.</p>
+      <div class="cta"><a class="btn solid" data-link="video" href="#">Watch films</a><a class="btn ghost" data-link="live" href="#">Watch live</a><a class="btn ghost" data-link="box" href="#">Store your work</a></div>
   </div>
 </section>
 
@@ -129,8 +131,9 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
     <svg class="icon" viewBox="0 0 320 120" aria-hidden="true"><defs><linearGradient id="gv" x1="0" x2="1"><stop offset="0" stop-color="#ff8a3d" stop-opacity=".25"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
       <rect x="8" y="14" width="200" height="92" rx="12" fill="none" stroke="url(#gv)" stroke-width="3"/><path d="M92 40v40l34-20z" fill="#ff8a3d"/>
       <rect x="222" y="14" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".55"/><rect x="222" y="47" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".35"/><rect x="222" y="80" width="90" height="26" rx="6" fill="#ff8a3d" opacity=".2"/></svg>
-    <h2>Bazzy TV</h2>
-    <p>Indie films, documentaries and music films. Rent or buy with credits, and filmmakers keep 80%.</p>
+    <span class="eyebrow">Watch</span>
+    <h2>Bazzy TV Films</h2>
+    <p>Independent films, documentaries and music films. Rent or buy with credits, and filmmakers keep 80%.</p>
     <div class="go"><span data-host="video"></span><b>→</b></div>
   </a>
   <a class="door live" data-link="live" href="#">
@@ -138,8 +141,9 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
     <svg class="icon" viewBox="0 0 320 120" aria-hidden="true">
       <circle cx="60" cy="60" r="16" fill="#ff3d7f"/><circle cx="60" cy="60" r="32" fill="none" stroke="#ff3d7f" stroke-width="3" opacity=".55"/><circle cx="60" cy="60" r="50" fill="none" stroke="#ff3d7f" stroke-width="3" opacity=".25"/>
       <path d="M130 60h18l10-30 14 60 14-44 10 24 10-10h18l10-22 12 44 10-22h34" fill="none" stroke="#ff3d7f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="eyebrow">Watch live · Go live</span>
     <h2>Bazzy Live</h2>
-    <p>Concerts and live shows from the hottest independent venue in Brooklyn, Greenhouse BK, a living live venue. Bazzy Live can broadcast any event globally with the highest caliber audio and video.</p>
+    <p>Concerts and live shows from Greenhouse BK in Brooklyn, broadcast worldwide in studio-quality sound and picture. Get a ticket with credits; the band splits the take with the venue, producers and crew.</p>
     <div class="go"><span data-host="live"></span><b>→</b></div>
   </a>
   <a class="door box" data-link="box" href="#">
@@ -148,18 +152,24 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
       <path d="M40 40l60-26 60 26-60 26z" fill="#a77bff" opacity=".85"/><path d="M40 40v52l60 26V66z" fill="#a77bff" opacity=".5"/><path d="M160 40v52l-60 26V66z" fill="#a77bff" opacity=".3"/>
       <rect x="190" y="26" width="120" height="14" rx="7" fill="#a77bff" opacity=".25"/><rect x="190" y="26" width="84" height="14" rx="7" fill="#a77bff"/>
       <rect x="190" y="56" width="120" height="10" rx="5" fill="#a77bff" opacity=".2"/><rect x="190" y="78" width="96" height="10" rx="5" fill="#a77bff" opacity=".2"/></svg>
+    <span class="eyebrow">Store · Play · Share</span>
     <h2>BazzyBox</h2>
-    <p>Storage for filmmakers and musicians: 3 TB for $9.99. You can leave any day and take every file with you.</p>
+    <p>Storage for filmmakers and musicians, from 1 TB for $4.99. Mazzy plays your songs and video and turns them into playlists for demos and dailies. Change plans any day and take every file with you.</p>
     <div class="go"><span data-host="box"></span><b>→</b></div>
   </a>
 </div></section>
 
 <section class="one"><div class="wrap">
-  <h3>One account. One wallet. Three rooms.</h3>
+  <div>
+    <h3>One account. One wallet. Three apps.</h3>
+    <p class="sub">No subscriptions. Fill your wallet, buy credits and go.</p>
+  </div>
   <div class="facts">
-    <div class="fact"><b>One sign-in</b><span>Use email, Apple or Google once and you're in everywhere.</span></div>
-    <div class="fact"><b>80% to artists</b><span>Most of every credit you spend goes to whoever made what you watch.</span></div>
-    <div class="fact"><b>No lock-in</b><span>Change plans any day. Your files are always yours to export.</span></div>
+    <div class="fact"><b>One sign-in</b><span>Sign in once and you're in on Bazzy TV, Bazzy Live and BazzyBox.</span></div>
+    <div class="fact"><b>No subscriptions</b><span>Top up your wallet and spend credits anywhere: films, show tickets, storage. Your card is never charged on a schedule.</span></div>
+    <div class="fact"><b>80% to artists</b><span>Most of every credit goes to whoever made what you watch, and lands in the same wallet.</span></div>
+    <div class="fact"><b>Splits for the whole crew</b><span>Bands share live-show earnings with the venue, producers and everyone who worked the night.</span></div>
+    <div class="fact"><b>No lock-in</b><span>Change plans any day with unused days back as credits. Your files are always yours to export.</span></div>
     <div class="fact"><b>Built by Bassy Bob</b><span>Grammy-winning producer, building this in Brooklyn.</span></div>
   </div>
 </div></section>
@@ -185,7 +195,7 @@ footer nav{display:flex;gap:18px;flex-wrap:wrap}footer a:hover{color:#fff}
 
 <footer><div class="wrap">
   <span>© 2026 Bazzy Live LLC</span>
-  <nav aria-label="Footer"><a data-link="video" href="#">Bazzy TV films</a><a data-link="live" href="#">Bazzy Live</a><a data-link="box" href="#">BazzyBox</a></nav>
+  <nav aria-label="Footer"><a data-link="video" href="#">Bazzy TV Films</a><a data-link="live" href="#">Bazzy Live</a><a data-link="box" href="#">BazzyBox</a></nav>
 </div></footer>
 
 <script>
